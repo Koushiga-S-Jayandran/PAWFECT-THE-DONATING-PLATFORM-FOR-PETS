@@ -1,0 +1,6 @@
+{
+  "name": "Pawfect",
+  "description": "A giving marketplace for animal shelters in India. Give meals, vaccinations or sponsorships directly by UPI with verified photo proof.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

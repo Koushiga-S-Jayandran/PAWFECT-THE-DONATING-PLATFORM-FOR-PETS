@@ -1,0 +1,96 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered donor profile tied to Firebase Auth UID",
+      "type": "object",
+      "properties": {
+        "fullName": {
+          "type": "string",
+          "description": "Full name of the donor",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "description": "Indian phone number with +91 prefix and 10 digits",
+          "pattern": "^\\+91[6-9][0-9]{9}$"
+        },
+        "consentAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp of terms consent"
+        },
+        "consentVersion": {
+          "type": "string",
+          "description": "Version of terms agreed to, e.g. v1.0",
+          "maxLength": 20
+        },
+        "role": {
+          "type": "string",
+          "description": "Fixed donor role",
+          "enum": ["DONOR"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when user profile was created"
+        }
+      },
+      "required": ["fullName", "phone", "consentAt", "consentVersion", "role", "createdAt"]
+    },
+    "LoginThrottle": {
+      "title": "LoginThrottle",
+      "description": "Per-email rate limiter tracking rolling 24-hour failed login attempts",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "description": "Attempt counter, up to 4"
+        },
+        "windowStart": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of current rolling window start"
+        }
+      },
+      "required": ["count", "windowStart"]
+    },
+    "VerificationThrottle": {
+      "title": "VerificationThrottle",
+      "description": "Tracks verification email requests to enforce 60s cooldown and max 3 per hour",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "description": "Count of resend attempts in current hour"
+        },
+        "windowStart": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start of the 1-hour window"
+        },
+        "lastSentAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of most recent verification email sent"
+        }
+      },
+      "required": ["count", "windowStart", "lastSentAt"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "Private user donor profile document accessible only by owner"
+    },
+    "/loginThrottle/{emailHash}": {
+      "schema": "LoginThrottle",
+      "description": "Login attempt counter indexed by SHA-256 hash of email"
+    },
+    "/verificationThrottle/{emailHash}": {
+      "schema": "VerificationThrottle",
+      "description": "Verification email attempt limiter indexed by SHA-256 hash of email"
+    }
+  }
+}

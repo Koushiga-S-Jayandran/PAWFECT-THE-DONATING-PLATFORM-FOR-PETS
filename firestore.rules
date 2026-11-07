@@ -1,0 +1,189 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // HELPER FUNCTIONS (Phase 3: Hardened Primitives)
+    // =========================================================================
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // =========================================================================
+    // VALIDATION HELPERS (Phase 4: Standalone Schema Blueprints)
+    // =========================================================================
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['fullName', 'phone', 'consentAt', 'consentVersion', 'role', 'createdAt'])
+        && data.keys().hasOnly(['fullName', 'phone', 'consentAt', 'consentVersion', 'role', 'createdAt'])
+        && data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 100
+        && data.phone is string && data.phone.matches('^\\+91[6-9][0-9]{9}$')
+        && data.consentVersion is string && data.consentVersion.size() <= 20
+        && data.role == 'DONOR'
+        && (data.createdAt is timestamp || (data.createdAt is string && data.createdAt.size() <= 50))
+        && (data.consentAt is timestamp || (data.consentAt is string && data.consentAt.size() <= 50));
+    }
+
+    function isValidLoginThrottleDoc(data) {
+      return data.keys().hasAll(['count', 'windowStart'])
+        && data.keys().hasOnly(['count', 'windowStart'])
+        && data.count is int
+        && data.count >= 1 && data.count <= 4
+        && (data.windowStart is timestamp || (data.windowStart is string && data.windowStart.size() <= 50));
+    }
+
+    function isValidVerificationThrottleDoc(data) {
+      return data.keys().hasAll(['count', 'windowStart', 'lastSentAt'])
+        && data.keys().hasOnly(['count', 'windowStart', 'lastSentAt'])
+        && data.count is int
+        && data.count >= 1 && data.count <= 3
+        && (data.windowStart is timestamp || (data.windowStart is string && data.windowStart.size() <= 50))
+        && (data.lastSentAt is timestamp || (data.lastSentAt is string && data.lastSentAt.size() <= 50));
+    }
+
+    // =========================================================================
+    // GLOBAL DEFAULT DENY (Pillar 1: Safety Net)
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // USERS COLLECTION: users/{uid}
+    // Private user profile. Strictly isolated to owner. No list queries.
+    // =========================================================================
+    match /users/{uid} {
+      // Single doc read: only authenticated owner
+      allow get: if isOwner(uid) && isValidId(uid);
+
+      // List queries: unconditionally forbidden (Pillar 8: Prevent directory scraping)
+      allow list: if false;
+
+      // Creation: role must be DONOR, doc ID matches auth.uid
+      allow create: if isOwner(uid)
+        && isValidId(uid)
+        && isValidUserProfile(incoming())
+        && incoming().role == 'DONOR';
+
+      // Update: role, createdAt, and consentAt cannot be mutated
+      allow update: if isOwner(uid)
+        && isValidId(uid)
+        && isValidUserProfile(incoming())
+        && incoming().role == existing().role
+        && incoming().createdAt == existing().createdAt
+        && incoming().consentAt == existing().consentAt
+        && incoming().consentVersion == existing().consentVersion
+        && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone']);
+
+      // Deletion: donor profile deletion only by verified owner
+      allow delete: if isOwner(uid) && isEmailVerified();
+    }
+
+    // =========================================================================
+    // LOGIN THROTTLE: loginThrottle/{emailHash}
+    // Tracks rolling 24-hour failed attempts. Count increments by exactly +1 up to 4.
+    // Cleared upon successful sign-in by a verified user.
+    // =========================================================================
+    match /loginThrottle/{emailHash} {
+      // Document lookup permitted to check remaining attempts / lock state
+      allow get: if isValidId(emailHash);
+      allow list: if false;
+
+      // Initial create: count must start at 1, windowStart bound to request.time
+      allow create: if isValidId(emailHash)
+        && isValidLoginThrottleDoc(incoming())
+        && incoming().count == 1;
+
+      // Update: must be exactly +1 (or reset to 1 if 24h passed), count <= 4,
+      // and windowStart is never changed by client unless restarting after 24h.
+      allow update: if isValidId(emailHash)
+        && isValidLoginThrottleDoc(incoming())
+        && (
+          // Case A: Incrementing within the current 24h window
+          (
+            incoming().count == existing().count + 1
+            && incoming().count <= 4
+            && incoming().windowStart == existing().windowStart
+          )
+          ||
+          // Case B: Restarting the 24h rolling window
+          (
+            incoming().count == 1
+            && (
+              (existing().windowStart is timestamp && request.time >= existing().windowStart + duration.value(24, 'h'))
+              || (existing().windowStart is string)
+            )
+          )
+        );
+
+      // Delete: only allowed for a signed-in user whose token has email_verified == true
+      allow delete: if isEmailVerified() && isValidId(emailHash);
+    }
+
+    // =========================================================================
+    // VERIFICATION THROTTLE: verificationThrottle/{emailHash}
+    // Limits resending verification emails: max 3 per hour, 60s cooldown.
+    // =========================================================================
+    match /verificationThrottle/{emailHash} {
+      allow get: if isValidId(emailHash);
+      allow list: if false;
+
+      // Initial create: count must start at 1
+      allow create: if isValidId(emailHash)
+        && isValidVerificationThrottleDoc(incoming())
+        && incoming().count == 1;
+
+      // Update: increment up to 3 within hour window or reset after 1 hour
+      allow update: if isValidId(emailHash)
+        && isValidVerificationThrottleDoc(incoming())
+        && (
+          // Case A: Next attempt within the hour
+          (
+            incoming().count == existing().count + 1
+            && incoming().count <= 3
+            && incoming().windowStart == existing().windowStart
+          )
+          ||
+          // Case B: Restarting the 1-hour rolling window
+          (
+            incoming().count == 1
+            && (
+              (existing().windowStart is timestamp && request.time >= existing().windowStart + duration.value(1, 'h'))
+              || (existing().windowStart is string)
+            )
+          )
+        );
+
+      allow delete: if isEmailVerified() && isValidId(emailHash);
+    }
+
+    // =========================================================================
+    // SYSTEM TEST CONNECTION PATH: test/connection
+    // Allowed for connection readiness ping per Firebase skill
+    // =========================================================================
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}
