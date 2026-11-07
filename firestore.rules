@@ -325,23 +325,76 @@ service cloud.firestore {
                     && exists(/databases/$(database)/documents/shelters/$(incoming().shelterId))
                     && get(/databases/$(database)/documents/shelters/$(incoming().shelterId)).data.status == 'APPROVED';
 
-      // Status transitions: CANCELLED (by donor) or EXPIRED (past TTL)
+      // Status transitions: CANCELLED (by donor), EXPIRED (past TTL), or Step 2B Payment Proof & Confirmation
       allow update: if (
         // Case 1: Donor cancels their pending donation
         (signedInVerified()
          && request.auth.uid == resource.data.donorUid
-         && resource.data.status == 'PENDING'
+         && (resource.data.status == 'PENDING' || resource.data.status == 'AWAITING_PAYMENT')
          && incoming().status == 'CANCELLED'
          && incoming().statusVersion == resource.data.statusVersion + 1
          && incoming().diff(resource.data).affectedKeys().hasOnly(['status', 'statusReason', 'statusVersion', 'updatedAt']))
         ||
         // Case 2: Donation expires past TTL window
-        (resource.data.status == 'PENDING'
+        ((resource.data.status == 'PENDING' || resource.data.status == 'AWAITING_PAYMENT')
          && incoming().status == 'EXPIRED'
          && incoming().statusVersion == resource.data.statusVersion + 1
          && incoming().diff(resource.data).affectedKeys().hasOnly(['status', 'statusReason', 'statusVersion', 'updatedAt']))
         ||
-        // Case 3: Admin override
+        // Case 3 (Step 2B-a): Donor submits proof before expiry, or within 24h of expiry, or after rejection (< 3)
+        (signedInVerified()
+         && request.auth.uid == resource.data.donorUid
+         && incoming().status == 'PROOF_SUBMITTED'
+         && incoming().statusVersion == resource.data.statusVersion + 1
+         && (
+           // A: From pending/awaiting payment before expiry
+           ((resource.data.status == 'PENDING' || resource.data.status == 'AWAITING_PAYMENT') && (
+             (resource.data.expiresAt is timestamp && request.time <= resource.data.expiresAt)
+             || (resource.data.expiresAt is int && request.time.toMillis() <= resource.data.expiresAt)
+           ))
+           ||
+           // B: From expired up to 24 hours after expiry
+           (resource.data.status == 'EXPIRED' && (
+             (resource.data.expiresAt is timestamp && request.time <= resource.data.expiresAt + duration.value(24, 'h'))
+             || (resource.data.expiresAt is int && request.time.toMillis() <= resource.data.expiresAt + 86400000)
+           ))
+           ||
+           // C: From rejected with fewer than 3 rejections
+           (resource.data.status == 'REJECTED' && (!('rejectionCount' in resource.data) || resource.data.rejectionCount < 3))
+         )
+         && incoming().diff(resource.data).affectedKeys().hasOnly(['status', 'statusVersion', 'proofSubmittedAt', 'latestProofAttempt', 'updatedAt']))
+        ||
+        // Case 4 (Step 2B-b): Shelter owner confirms payment
+        (signedInVerified()
+         && request.auth.uid == resource.data.shelterId
+         && request.auth.uid != resource.data.donorUid
+         && resource.data.status == 'PROOF_SUBMITTED'
+         && incoming().status == 'CONFIRMED'
+         && incoming().statusVersion == resource.data.statusVersion + 1
+         && incoming().diff(resource.data).affectedKeys().hasOnly(['status', 'statusVersion', 'confirmedAt', 'updatedAt']))
+        ||
+        // Case 5 (Step 2B-c): Shelter owner rejects payment with 10-300 char reason
+        (signedInVerified()
+         && request.auth.uid == resource.data.shelterId
+         && request.auth.uid != resource.data.donorUid
+         && resource.data.status == 'PROOF_SUBMITTED'
+         && incoming().status == 'REJECTED'
+         && incoming().rejectionReason is string
+         && incoming().rejectionReason.size() >= 10
+         && incoming().rejectionReason.size() <= 300
+         && incoming().statusVersion == resource.data.statusVersion + 1
+         && incoming().rejectionCount == (('rejectionCount' in resource.data) ? resource.data.rejectionCount + 1 : 1)
+         && incoming().diff(resource.data).affectedKeys().hasOnly(['status', 'statusVersion', 'rejectionReason', 'rejectionCount', 'updatedAt']))
+        ||
+        // Case 6 (Step 2B-d): Donor opens dispute on rejected donation
+        (signedInVerified()
+         && request.auth.uid == resource.data.donorUid
+         && resource.data.status == 'REJECTED'
+         && incoming().status == 'DISPUTED'
+         && incoming().statusVersion == resource.data.statusVersion + 1
+         && incoming().diff(resource.data).affectedKeys().hasOnly(['status', 'statusVersion', 'disputedAt', 'updatedAt']))
+        ||
+        // Case 7: Admin override
         (isAdmin()
          && incoming().statusVersion == resource.data.statusVersion + 1)
       );
@@ -375,5 +428,72 @@ service cloud.firestore {
       allow create: if signedInVerified() || request.auth != null;
       allow update, delete: if false;
     }
+
+    // =========================================================================
+    // STEP 2B: PAYMENT PROOF & FRAUD PREVENTION RULES
+    // =========================================================================
+
+    match /donationProofs/{id} {
+      // Donor can read their own proof; shelter owner reads proofs for their shelter; admin reads all
+      allow get: if request.auth != null && (
+        resource.data.donorId == request.auth.uid
+        || resource.data.shelterId == request.auth.uid
+        || isAdmin()
+      );
+
+      allow list: if request.auth != null && (
+        resource.data.donorId == request.auth.uid
+        || resource.data.shelterId == request.auth.uid
+        || isAdmin()
+      );
+
+      // Create-only by verified donor with exact schema and validated Cloudinary URL
+      allow create: if signedInVerified()
+        && incoming().donorId == request.auth.uid
+        && exists(/databases/$(database)/documents/donations/$(incoming().donationId))
+        && get(/databases/$(database)/documents/donations/$(incoming().donationId)).data.donorUid == request.auth.uid
+        && get(/databases/$(database)/documents/donations/$(incoming().donationId)).data.shelterId == incoming().shelterId
+        && id == incoming().donationId + '_a' + string(incoming().attempt)
+        && incoming().attempt is int
+        && incoming().attempt >= 1
+        && incoming().attempt <= 3
+        && incoming().keys().hasAll(['id', 'donationId', 'donorId', 'shelterId', 'attempt', 'imageUrl', 'utr', 'paidAmountPaise', 'imageHash', 'flags', 'createdAt'])
+        && incoming().keys().hasOnly(['id', 'donationId', 'donorId', 'shelterId', 'attempt', 'imageUrl', 'utr', 'paidAmountPaise', 'imageHash', 'flags', 'createdAt'])
+        && incoming().imageUrl is string
+        && incoming().imageUrl.matches('^https://res\\.cloudinary\\.com/hzhohdqe/.*')
+        && incoming().utr is string
+        && incoming().utr.matches('^[0-9]{12}$')
+        && incoming().paidAmountPaise is int
+        && incoming().paidAmountPaise >= 100
+        && incoming().paidAmountPaise <= 10000000
+        && incoming().imageHash is string
+        && incoming().imageHash.matches('^[a-f0-9]{64}$')
+        && incoming().flags.amountMismatch == (incoming().paidAmountPaise != get(/databases/$(database)/documents/donations/$(incoming().donationId)).data.amountPaise);
+
+      // Proofs are immutable and cannot be edited or deleted
+      allow update, delete: if false;
+    }
+
+    match /utrGuards/{utr} {
+      // Write-once uniqueness lock: cannot be read by public/donors, prevents UTR reuse
+      allow get, list: if false;
+      allow create: if signedInVerified()
+        && incoming().donorId == request.auth.uid
+        && utr is string
+        && utr.matches('^[0-9]{12}$')
+        && !exists(/databases/$(database)/documents/utrGuards/$(utr));
+      allow update, delete: if false;
+    }
+
+    match /proofHashes/{hash} {
+      // Create-only duplicate image indicator: cannot be read or overwritten
+      allow get, list: if false;
+      allow create: if signedInVerified()
+        && hash is string
+        && hash.matches('^[a-f0-9]{64}$')
+        && !exists(/databases/$(database)/documents/proofHashes/$(hash));
+      allow update, delete: if false;
+    }
   }
 }
+

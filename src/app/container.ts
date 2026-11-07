@@ -93,3 +93,28 @@ export const donationLifecycleService = new DonationLifecycleService(
   donationReader,
   donationWriter
 );
+
+// Payment Proof & Shelter Confirmation Services (Step 2B)
+import { CloudinaryImageUploader } from '../repositories/CloudinaryImageUploader.js';
+import { FirebaseProofRepository } from '../repositories/FirebaseProofRepository.js';
+import { ProofSubmissionService } from '../services/ProofSubmissionService.js';
+import { ShelterPaymentReviewService } from '../services/ShelterPaymentReviewService.js';
+import { EscalationQueryService } from '../services/EscalationQueryService.js';
+
+export const cloudinaryImageUploader = new CloudinaryImageUploader();
+export const proofRepository = new FirebaseProofRepository();
+
+export const proofSubmissionService = new ProofSubmissionService(
+  proofRepository,
+  proofRepository,
+  proofRepository,
+  proofRepository,
+  cloudinaryImageUploader
+);
+
+export const shelterPaymentReviewService = new ShelterPaymentReviewService(
+  proofRepository
+);
+
+export const escalationQueryService = new EscalationQueryService();
+
