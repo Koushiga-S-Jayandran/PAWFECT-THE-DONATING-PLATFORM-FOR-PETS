@@ -49,3 +49,47 @@ export const emailVerificationService = new EmailVerificationService(
   throttleStore,
   hasher
 );
+
+// Shelter Repositories & Services (Step 1)
+import { FirebaseShelterRepository } from '../repositories/FirebaseShelterRepository.js';
+import { ShelterRegistrationService } from '../services/ShelterRegistrationService.js';
+import { ShelterModerationService } from '../services/ShelterModerationService.js';
+import { ShelterBrowseService } from '../services/ShelterBrowseService.js';
+
+export const shelterRepository = new FirebaseShelterRepository();
+export const shelterReader = shelterRepository;
+export const shelterWriter = shelterRepository;
+export const adminDirectory = shelterRepository;
+
+export const shelterRegistrationService = new ShelterRegistrationService(
+  shelterReader,
+  shelterWriter
+);
+
+export const shelterModerationService = new ShelterModerationService(
+  shelterReader,
+  shelterWriter,
+  adminDirectory
+);
+
+export const shelterBrowseService = new ShelterBrowseService(shelterReader);
+
+// Donation & Gift Giving Repositories & Services (Step 2)
+import { FirebaseDonationRepository } from '../repositories/FirebaseDonationRepository.js';
+import { DonationCreationService } from '../services/DonationCreationService.js';
+import { DonationLifecycleService } from '../services/DonationLifecycleService.js';
+
+export const donationRepository = new FirebaseDonationRepository();
+export const donationReader = donationRepository;
+export const donationWriter = donationRepository;
+
+export const donationCreationService = new DonationCreationService(
+  donationWriter,
+  donationReader,
+  shelterReader
+);
+
+export const donationLifecycleService = new DonationLifecycleService(
+  donationReader,
+  donationWriter
+);

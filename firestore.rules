@@ -185,5 +185,195 @@ service cloud.firestore {
     match /test/connection {
       allow read: if true;
     }
+
+    // =========================================================================
+    // SHELTER MODULE RULES (Step 1: Tamil Nadu and Kerala)
+    // =========================================================================
+
+    function signedInVerified() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return signedInVerified()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function enabledStates() {
+      return ['TAMIL_NADU', 'KERALA'];
+    }
+
+    match /shelters/{id} {
+      // Donors read approved shelters; owner reads own shelter; admin reads all
+      allow get: if resource.data.status == 'APPROVED'
+                 || (request.auth != null && request.auth.uid == id)
+                 || isAdmin();
+
+      // List queries: public donors see only APPROVED; admins can list
+      allow list: if resource.data.status == 'APPROVED' || isAdmin();
+
+      // Owner registration
+      allow create: if signedInVerified()
+                    && request.auth.uid == id
+                    && request.resource.data.status == 'PENDING'
+                    && request.resource.data.state in enabledStates()
+                    && request.resource.data.resubmitCount <= 3
+                    && request.resource.data.statusVersion == 1;
+
+      // Owner resubmit (PENDING from REJECTED) OR owner update urgency (APPROVED)
+      // OR Admin moderation transitions
+      allow update: if signedInVerified() && (
+        // Case 1: Owner resubmit after rejection
+        (request.auth.uid == id
+         && resource.data.status == 'REJECTED'
+         && request.resource.data.status == 'PENDING'
+         && request.resource.data.resubmitCount == resource.data.resubmitCount + 1
+         && request.resource.data.resubmitCount <= 3
+         && request.resource.data.statusVersion == resource.data.statusVersion + 1
+         && request.resource.data.state in enabledStates())
+        ||
+        // Case 2: Owner updates urgency only while APPROVED
+        (request.auth.uid == id
+         && resource.data.status == 'APPROVED'
+         && request.resource.data.status == 'APPROVED'
+         && request.resource.data.statusVersion == resource.data.statusVersion + 1
+         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['urgencyLevel', 'urgencyReason', 'statusVersion', 'updatedAt']))
+        ||
+        // Case 3: Admin transitions (anti-self-approval: request.auth.uid != id)
+        (isAdmin()
+         && request.auth.uid != id
+         && request.resource.data.statusVersion == resource.data.statusVersion + 1)
+      );
+
+      // Shelters cannot be deleted
+      allow delete: if false;
+    }
+
+    match /shelterPrivate/{id} {
+      allow get: if (request.auth != null && request.auth.uid == id)
+                 || isAdmin();
+
+      allow list: if isAdmin();
+
+      // Created atomically alongside shelters/{id}
+      allow create: if signedInVerified() && request.auth.uid == id;
+
+      allow update: if signedInVerified() && (
+        (request.auth.uid == id) || isAdmin()
+      );
+
+      allow delete: if false;
+    }
+
+    match /auditLogs/{docId} {
+      allow get, list: if isAdmin();
+      // Audit logs are append-only by admins or owners during audited transitions
+      allow create: if signedInVerified();
+      allow update, delete: if false;
+    }
+
+    match /admins/{id} {
+      // Any signed-in user can check if their own UID is an admin doc
+      allow get: if request.auth != null && request.auth.uid == id;
+      allow list: if isAdmin();
+      allow write: if false; // Provisioned securely via Firebase Console / Admin SDK
+    }
+
+    // =========================================================================
+    // DONATIONS & GIFTS MODULE RULES (Step 2: 100% Direct UPI Giving)
+    // =========================================================================
+
+    function isValidDonationAmount(data) {
+      return (
+        // Case A: Custom amount contribution (min ₹50 = 5000 paise, max ₹1,00,000 = 10000000 paise)
+        (data.giftId == 'custom-amount'
+         && data.amountPaise is int
+         && data.amountPaise >= 5000
+         && data.amountPaise <= 10000000
+         && data.quantity == 1)
+        ||
+        // Case B: Catalog fixed gift (amount must exactly equal quantity * unitPricePaise)
+        (data.giftId != 'custom-amount'
+         && data.quantity is int
+         && data.quantity >= 1
+         && data.quantity <= 100
+         && data.unitPricePaise is int
+         && data.unitPricePaise > 0
+         && data.amountPaise is int
+         && data.amountPaise == data.quantity * data.unitPricePaise)
+      );
+    }
+
+    match /donations/{id} {
+      // Donors can read their own donations, shelters read gifts sent to them, admins can read
+      allow get: if (request.auth != null && (
+                    request.auth.uid == resource.data.donorUid
+                    || request.auth.uid == resource.data.shelterId
+                    || isAdmin()
+                  ));
+
+      // Donors list only their own donations; admins list all
+      allow list: if (request.auth != null && resource.data.donorUid == request.auth.uid)
+                  || isAdmin();
+
+      // Donor creates a donation
+      allow create: if signedInVerified()
+                    && request.auth.uid == incoming().donorUid
+                    && incoming().status == 'PENDING'
+                    && incoming().statusVersion == 1
+                    && isValidDonationAmount(incoming())
+                    && exists(/databases/$(database)/documents/shelters/$(incoming().shelterId))
+                    && get(/databases/$(database)/documents/shelters/$(incoming().shelterId)).data.status == 'APPROVED';
+
+      // Status transitions: CANCELLED (by donor) or EXPIRED (past TTL)
+      allow update: if (
+        // Case 1: Donor cancels their pending donation
+        (signedInVerified()
+         && request.auth.uid == resource.data.donorUid
+         && resource.data.status == 'PENDING'
+         && incoming().status == 'CANCELLED'
+         && incoming().statusVersion == resource.data.statusVersion + 1
+         && incoming().diff(resource.data).affectedKeys().hasOnly(['status', 'statusReason', 'statusVersion', 'updatedAt']))
+        ||
+        // Case 2: Donation expires past TTL window
+        (resource.data.status == 'PENDING'
+         && incoming().status == 'EXPIRED'
+         && incoming().statusVersion == resource.data.statusVersion + 1
+         && incoming().diff(resource.data).affectedKeys().hasOnly(['status', 'statusReason', 'statusVersion', 'updatedAt']))
+        ||
+        // Case 3: Admin override
+        (isAdmin()
+         && incoming().statusVersion == resource.data.statusVersion + 1)
+      );
+
+      // Donations cannot be deleted (permanent financial audit record)
+      allow delete: if false;
+    }
+
+    match /donationReferences/{reference} {
+      // Look up reference during checkout or receipt verification
+      allow get: if signedInVerified();
+      allow list: if isAdmin();
+      // Reference written once during atomic batch creation
+      allow create: if signedInVerified() && request.auth.uid == incoming().donorUid;
+      allow update, delete: if false;
+    }
+
+    match /shelterPayInfo/{shelterId} {
+      // Safe, verified UPI payment info readable for checkout
+      allow get, list: if true;
+      // Managed by shelter owner or admin only when shelter is APPROVED
+      allow create, update: if signedInVerified()
+                            && (request.auth.uid == shelterId || isAdmin())
+                            && exists(/databases/$(database)/documents/shelters/$(shelterId))
+                            && get(/databases/$(database)/documents/shelters/$(shelterId)).data.status == 'APPROVED';
+      allow delete: if false;
+    }
+
+    match /donationAuditLogs/{docId} {
+      allow get, list: if isAdmin();
+      allow create: if signedInVerified() || request.auth != null;
+      allow update, delete: if false;
+    }
   }
 }

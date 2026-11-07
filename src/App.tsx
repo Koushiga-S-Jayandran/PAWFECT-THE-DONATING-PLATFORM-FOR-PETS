@@ -15,6 +15,19 @@ import {
 } from './features/auth/RouteGuards.js';
 import { ROUTES } from './config/constants.js';
 import { validateFirestoreConnection } from './config/firebase.js';
+import { ShelterRegisterPage } from './features/shelter/ShelterRegisterPage.js';
+import { ShelterStatusPage } from './features/shelter/ShelterStatusPage.js';
+import { ShelterBrowsePage } from './features/shelter/ShelterBrowsePage.js';
+import { ShelterDetailPage } from './features/shelter/ShelterDetailPage.js';
+import { AdminSheltersPage } from './features/admin/AdminSheltersPage.js';
+import { SHELTER_ROUTES } from './config/shelterRoutes.js';
+import { GiftPickerPage } from './features/donation/GiftPickerPage.js';
+import { GiftDetailsPage } from './features/donation/GiftDetailsPage.js';
+import { DonationReviewPage } from './features/donation/DonationReviewPage.js';
+import { DonationPayPage } from './features/donation/DonationPayPage.js';
+import { DonationStatusPage } from './features/donation/DonationStatusPage.js';
+import { MyDonationsPage } from './features/donation/MyDonationsPage.js';
+import { DONATION_ROUTES } from './config/donationRoutes.js';
 
 export default function App() {
   useEffect(() => {
@@ -49,6 +62,92 @@ export default function App() {
           element={
             <RequireAuth>
               <DashboardPage />
+            </RequireAuth>
+          }
+        />
+
+
+        {/* Shelter Routes (Step 1) */}
+        <Route
+          path={SHELTER_ROUTES.REGISTER}
+          element={
+            <RequireAuth>
+              <ShelterRegisterPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={SHELTER_ROUTES.STATUS}
+          element={
+            <RequireAuth>
+              <ShelterStatusPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={SHELTER_ROUTES.BROWSE}
+          element={
+            <RequireAuth>
+              <ShelterBrowsePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={SHELTER_ROUTES.DETAIL}
+          element={
+            <RequireAuth>
+              <ShelterDetailPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={SHELTER_ROUTES.ADMIN_SHELTERS}
+          element={
+            <RequireAuth>
+              <AdminSheltersPage />
+            </RequireAuth>
+          }
+        />
+
+        {/* Donation & Gift Giving Routes (Step 2) */}
+        <Route path={DONATION_ROUTES.CATALOG} element={<GiftPickerPage />} />
+        <Route
+          path={DONATION_ROUTES.DETAILS}
+          element={
+            <RequireAuth>
+              <GiftDetailsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={DONATION_ROUTES.REVIEW}
+          element={
+            <RequireAuth>
+              <DonationReviewPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={DONATION_ROUTES.PAY}
+          element={
+            <RequireAuth>
+              <DonationPayPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={DONATION_ROUTES.STATUS}
+          element={
+            <RequireAuth>
+              <DonationStatusPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={DONATION_ROUTES.MY_DONATIONS}
+          element={
+            <RequireAuth>
+              <MyDonationsPage />
             </RequireAuth>
           }
         />

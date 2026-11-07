@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { authGateway, userProfileRepository } from '../../app/container.js';
+import { useNavigate, Link } from 'react-router-dom';
+import { authGateway, userProfileRepository, shelterReader } from '../../app/container.js';
 import type { AuthSessionUser, UserProfile } from '../../domain/entities.js';
 import { Header } from '../../ui/components/Header.js';
 import { Footer } from '../../ui/components/Footer.js';
@@ -8,11 +8,14 @@ import { Card } from '../../ui/components/Card.js';
 import { Badge } from '../../ui/components/Badge.js';
 import { Button } from '../../ui/components/Button.js';
 import { ROUTES } from '../../config/constants.js';
-import { CheckCircle2, User, LogOut } from 'lucide-react';
+import { SHELTER_ROUTES } from '../../config/shelterRoutes.js';
+import { DONATION_ROUTES } from '../../config/donationRoutes.js';
+import { CheckCircle2, User, LogOut, Gift, Building2 } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const [user, setUser] = useState<AuthSessionUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [hasShelter, setHasShelter] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const navigate = useNavigate();
 
@@ -31,6 +34,17 @@ export const DashboardPage: React.FC = () => {
         })
         .finally(() => {
           setIsLoadingProfile(false);
+        });
+
+      shelterReader
+        .getShelterById(currentUser.uid)
+        .then((shelter) => {
+          if (shelter) {
+            setHasShelter(true);
+          }
+        })
+        .catch(() => {
+          // ignore error if not found or unauthorized
         });
     } else {
       setIsLoadingProfile(false);
@@ -75,6 +89,36 @@ export const DashboardPage: React.FC = () => {
               {user?.email && (
                 <p className="mt-1.5 text-sm text-[#6B5B61]">{user.email}</p>
               )}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 text-sm font-medium">
+              <Link
+                to={DONATION_ROUTES.CATALOG}
+                className="text-[#7B1E3A] hover:underline"
+              >
+                Choose a gift
+              </Link>
+              <span className="text-[#C4B5B8]" aria-hidden="true">•</span>
+              <Link
+                to={DONATION_ROUTES.MY_DONATIONS}
+                className="text-[#7B1E3A] hover:underline"
+              >
+                My gifts
+              </Link>
+              <span className="text-[#C4B5B8]" aria-hidden="true">•</span>
+              <Link
+                to={SHELTER_ROUTES.BROWSE}
+                className="text-[#7B1E3A] hover:underline"
+              >
+                Browse shelters
+              </Link>
+              <span className="text-[#C4B5B8]" aria-hidden="true">•</span>
+              <Link
+                to={hasShelter ? SHELTER_ROUTES.STATUS : SHELTER_ROUTES.REGISTER}
+                className="text-[#7B1E3A] hover:underline"
+              >
+                {hasShelter ? 'My shelter status' : 'Register your shelter'}
+              </Link>
             </div>
 
             <div className="border-t border-[#E7DEDF] pt-6 flex justify-center">
