@@ -37,11 +37,11 @@ export class StaleVersionError extends Error {
   }
 }
 
-export class IllegalTransitionError extends Error {
+import { DonationStateError } from './donationErrors.js';
+
+export class IllegalTransitionError extends DonationStateError {
   constructor(fromStatus: string, toStatus: string, reason?: string) {
-    super(
-      `Illegal status transition from '${fromStatus}' to '${toStatus}'.${reason ? ` ${reason}` : ''}`
-    );
+    super(fromStatus, toStatus, reason);
     this.name = 'IllegalTransitionError';
   }
 }

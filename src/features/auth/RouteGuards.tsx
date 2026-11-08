@@ -76,3 +76,23 @@ export const RedirectIfAuthenticated: React.FC<GuardProps> = ({ children }) => {
 
   return <>{children}</>;
 };
+
+/**
+ * useAuth Hook
+ * Subscribes to auth session user state.
+ */
+export function useAuth() {
+  const [currentUser, setCurrentUser] = useState<AuthSessionUser | null>(
+    authGateway.getCurrentUser()
+  );
+
+  useEffect(() => {
+    const unsubscribe = authGateway.onAuthStateChanged((user) => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  return { currentUser };
+}
+

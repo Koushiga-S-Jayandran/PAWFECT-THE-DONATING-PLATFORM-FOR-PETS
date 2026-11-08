@@ -28,6 +28,8 @@ import { DonationPayPage } from './features/donation/DonationPayPage.js';
 import { DonationStatusPage } from './features/donation/DonationStatusPage.js';
 import { MyDonationsPage } from './features/donation/MyDonationsPage.js';
 import { DONATION_ROUTES } from './config/donationRoutes.js';
+import { DonorProofPage } from './features/donor/DonorProofPage.js';
+import { PROOF_ROUTES } from './config/proofRoutes.js';
 
 export default function App() {
   useEffect(() => {
@@ -148,6 +150,14 @@ export default function App() {
           element={
             <RequireAuth>
               <MyDonationsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={PROOF_ROUTES.DONOR_PROOF}
+          element={
+            <RequireAuth>
+              <DonorProofPage />
             </RequireAuth>
           }
         />

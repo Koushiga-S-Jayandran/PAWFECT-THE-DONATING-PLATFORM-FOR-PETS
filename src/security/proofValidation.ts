@@ -12,7 +12,7 @@ export const proofFormSchema = z.object({
     .trim()
     .regex(/^[0-9]{12}$/, 'UTR must be exactly 12 numeric digits.'),
   paidAmountRupees: z
-    .number({ invalid_type_error: 'Please enter a valid payment amount.' })
+    .number({ message: 'Please enter a valid payment amount.' })
     .positive('Amount paid must be greater than zero.')
     .max(100000, 'Amount cannot exceed ₹1,00,000.')
     .refine(

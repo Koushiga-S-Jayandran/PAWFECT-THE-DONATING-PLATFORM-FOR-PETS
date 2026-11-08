@@ -68,7 +68,7 @@ export interface Step2BDonationAuditEntry {
   readonly timestamp: number;
 }
 
-export interface EnhancedDonation extends Donation {
+export interface EnhancedDonation extends Omit<Donation, 'status'> {
   readonly status: Step2BDonationStatus;
   readonly proofSubmittedAt?: number | null;
   readonly latestProofAttempt?: number; // 0-3
