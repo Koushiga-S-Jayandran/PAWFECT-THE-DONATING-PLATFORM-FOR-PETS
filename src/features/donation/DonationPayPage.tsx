@@ -22,6 +22,7 @@ import {
   ArrowRight,
   Info,
 } from 'lucide-react';
+import { DemoBadge } from '../../ui/components/DemoBadge.js';
 
 export const DonationPayPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -159,6 +160,12 @@ export const DonationPayPage: React.FC = () => {
 
   const isExpired = donation.status === 'EXPIRED' || (donation.status === 'PENDING' && isDonationExpired(donation.expiresAt));
   const isCancelled = donation.status === 'CANCELLED';
+  const isDemoDonation =
+    Boolean(
+      donation.shelterId?.startsWith('demo_') ||
+      donation.shelterPayeeName?.startsWith('[DEMO]') ||
+      donation.shelterUpiId?.includes('demo')
+    );
 
   return (
     <div className="flex min-h-screen flex-col bg-[#FAF7F2] text-[#231A1D]">
@@ -170,9 +177,12 @@ export const DonationPayPage: React.FC = () => {
             {/* Header info */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#7B1E3A] bg-[#F3E3E8] px-3 py-1 rounded-full">
-                  Ref: {donation.reference}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#7B1E3A] bg-[#F3E3E8] px-3 py-1 rounded-full">
+                    Ref: {donation.reference}
+                  </span>
+                  {isDemoDonation && <DemoBadge />}
+                </div>
 
                 {donation.status === 'PENDING' && !isExpired && (
                   <div className="flex items-center gap-1.5 rounded-full bg-[#FAF0E6] px-3 py-1 text-xs font-semibold text-[#8C4A00] border border-[#8C4A00]/20">
@@ -201,6 +211,22 @@ export const DonationPayPage: React.FC = () => {
                 Scan the QR code with Google Pay, PhonePe, Paytm, BHIM, or any bank UPI app.
               </p>
             </div>
+
+            {/* Demo Shelter Notice on Donation Screen */}
+            {isDemoDonation && (
+              <div
+                role="status"
+                className="rounded-2xl border border-[#7B1E3A]/30 bg-[#F3E3E8] p-4 text-xs text-[#7B1E3A] flex items-start gap-3 shadow-xs"
+              >
+                <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-[#7B1E3A]" />
+                <div className="leading-relaxed">
+                  <p className="font-semibold text-sm">Demo Shelter Notice</p>
+                  <p className="mt-0.5 text-[#231A1D]">
+                    This is a demo shelter for demonstration purposes. Donations are not real. Real UPI payments are disabled so no real money is sent to this placeholder account.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {error && (
               <div role="alert" className="rounded-xl border border-[#B4423A]/30 bg-[#B4423A]/10 p-4 text-xs font-medium text-[#B4423A]">
@@ -259,19 +285,39 @@ export const DonationPayPage: React.FC = () => {
 
                 {/* Direct Mobile UPI Intent Button */}
                 <div>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="lg"
-                    onClick={handleOpenUpiApp}
-                    className="w-full justify-center gap-2 font-semibold text-sm"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    <span>Pay via UPI App (Mobile)</span>
-                  </Button>
-                  <p className="text-[11px] text-[#6B5B61] mt-1.5">
-                    Tapping on mobile opens Google Pay, PhonePe, Paytm, or BHIM directly with the exact amount.
-                  </p>
+                  {isDemoDonation ? (
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="lg"
+                        disabled
+                        className="w-full justify-center gap-2 font-semibold text-sm opacity-60 cursor-not-allowed"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        <span>UPI Payment Disabled (Demo Shelter)</span>
+                      </Button>
+                      <p className="text-[11px] text-[#7B1E3A] font-medium">
+                        Payment is disabled for demonstration shelters to protect against accidental transfers.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="lg"
+                        onClick={handleOpenUpiApp}
+                        className="w-full justify-center gap-2 font-semibold text-sm"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        <span>Pay via UPI App (Mobile)</span>
+                      </Button>
+                      <p className="text-[11px] text-[#6B5B61] mt-1.5">
+                        Tapping on mobile opens Google Pay, PhonePe, Paytm, or BHIM directly with the exact amount.
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 {/* Payee UPI ID Copy Card */}

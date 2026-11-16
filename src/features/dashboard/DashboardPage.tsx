@@ -1,140 +1,164 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authGateway, userProfileRepository, shelterReader } from '../../app/container.js';
-import type { AuthSessionUser, UserProfile } from '../../domain/entities.js';
+import { shelterReader } from '../../app/container.js';
 import { Header } from '../../ui/components/Header.js';
 import { Footer } from '../../ui/components/Footer.js';
-import { Card } from '../../ui/components/Card.js';
-import { Badge } from '../../ui/components/Badge.js';
-import { Button } from '../../ui/components/Button.js';
 import { ROUTES } from '../../config/constants.js';
 import { SHELTER_ROUTES } from '../../config/shelterRoutes.js';
 import { DONATION_ROUTES } from '../../config/donationRoutes.js';
-import { CheckCircle2, User, LogOut, Gift, Building2 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext.js';
+import './dashboard.css';
 
 export const DashboardPage: React.FC = () => {
-  const [user, setUser] = useState<AuthSessionUser | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const { user, profile, loading: isLoadingProfile, logout } = useAuth();
   const [hasShelter, setHasShelter] = useState(false);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const currentUser = authGateway.getCurrentUser();
-    setUser(currentUser);
-
-    if (currentUser) {
-      userProfileRepository
-        .getProfile(currentUser.uid)
-        .then((p) => {
-          setProfile(p);
-        })
-        .catch((err) => {
-          console.warn('Could not load profile:', err);
-        })
-        .finally(() => {
-          setIsLoadingProfile(false);
-        });
-
+    if (user?.uid) {
       shelterReader
-        .getShelterById(currentUser.uid)
+        .getShelterById(user.uid)
         .then((shelter) => {
           if (shelter) {
             setHasShelter(true);
           }
         })
         .catch(() => {
-          // ignore error if not found or unauthorized
+          // Keep resilient state without unneeded telemetry
         });
-    } else {
-      setIsLoadingProfile(false);
     }
-  }, []);
+  }, [user?.uid]);
 
   const handleLogout = async () => {
-    await authGateway.signOut();
+    await logout();
     navigate(ROUTES.AUTH, { replace: true });
   };
 
-  const displayName = profile?.fullName || user?.displayName || user?.email || 'Donor';
+  // Extract first name as text
+  const fullNameString = profile?.fullName || profile?.name || user?.displayName || '';
+  const firstName = fullNameString.trim().split(' ')[0] || (user?.email ? user.email.split('@')[0] : 'there');
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#FAF7F2] text-[#231A1D]">
+    <div className="pf-dash-wrapper">
       <Header />
 
-      <main className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6 lg:px-8">
-        <div className="w-full max-w-lg">
-          <Card padding="lg" className="shadow-xs text-center space-y-6">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#F3E3E8] text-[#7B1E3A]">
-              <User className="h-10 w-10" aria-hidden="true" />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Badge variant="success" className="gap-1.5 py-1 px-3">
-                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>Email verified</span>
-                </Badge>
+      <main className="pf-dash-main">
+        {/* Welcome Section */}
+        <header className="pf-dash-header">
+          <div className="pf-dash-header-row">
+            <div className="pf-dash-welcome-group">
+              <div className="pf-dash-badges-row">
+                {user?.emailVerified && (
+                  <span className="pf-dash-badge pf-dash-badge-verified">
+                    Email verified
+                  </span>
+                )}
                 {profile?.role && (
-                  <Badge variant="primary" className="py-1 px-3">
-                    <span>{profile.role}</span>
-                  </Badge>
+                  <span className="pf-dash-badge pf-dash-badge-role">
+                    {profile.role}
+                  </span>
                 )}
               </div>
 
-              <h1 className="font-heading text-3xl font-normal text-[#231A1D]">
-                {isLoadingProfile ? 'Welcome back' : displayName}
+              <h1 className="pf-dash-title">
+                {isLoadingProfile ? 'Welcome back' : `Welcome, ${firstName}`}
               </h1>
 
               {user?.email && (
-                <p className="mt-1.5 text-sm text-[#6B5B61]">{user.email}</p>
+                <p className="pf-dash-subtitle">{user.email}</p>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-3 text-sm font-medium">
-              <Link
-                to={DONATION_ROUTES.CATALOG}
-                className="text-[#7B1E3A] hover:underline"
-              >
-                Choose a gift
-              </Link>
-              <span className="text-[#C4B5B8]" aria-hidden="true">•</span>
-              <Link
-                to={DONATION_ROUTES.MY_DONATIONS}
-                className="text-[#7B1E3A] hover:underline"
-              >
-                My gifts
-              </Link>
-              <span className="text-[#C4B5B8]" aria-hidden="true">•</span>
-              <Link
-                to={SHELTER_ROUTES.BROWSE}
-                className="text-[#7B1E3A] hover:underline"
-              >
-                Browse shelters
-              </Link>
-              <span className="text-[#C4B5B8]" aria-hidden="true">•</span>
-              <Link
-                to={hasShelter ? SHELTER_ROUTES.STATUS : SHELTER_ROUTES.REGISTER}
-                className="text-[#7B1E3A] hover:underline"
-              >
-                {hasShelter ? 'My shelter status' : 'Register your shelter'}
-              </Link>
-            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="pf-dash-logout-btn"
+            >
+              Log out
+            </button>
+          </div>
+        </header>
 
-            <div className="border-t border-[#E7DEDF] pt-6 flex justify-center">
-              <Button
-                type="button"
-                variant="outline"
-                size="md"
-                onClick={handleLogout}
-                className="gap-2 px-6"
-              >
-                <LogOut className="h-4 w-4" aria-hidden="true" />
-                <span>Log out</span>
-              </Button>
-            </div>
-          </Card>
-        </div>
+        {/* Navigation Cards Grid: 1 col (360px), 2 col (tablet), 3 col (desktop) */}
+        <section aria-label="Dashboard destinations">
+          <div className="pf-dash-grid">
+            {/* Card 1: Choose a gift */}
+            <Link
+              to={DONATION_ROUTES.CATALOG}
+              className="pf-dash-card"
+            >
+              <div className="pf-dash-card-content">
+                <h2 className="pf-dash-card-title">Choose a gift</h2>
+                <p className="pf-dash-card-desc">
+                  Browse meal packs, medical care, and essentials for shelter animals.
+                </p>
+              </div>
+              <div className="pf-dash-card-footer">
+                <span className="pf-dash-card-action">
+                  Open <span className="pf-dash-card-action-arrow" aria-hidden="true">→</span>
+                </span>
+              </div>
+            </Link>
+
+            {/* Card 2: My gifts */}
+            <Link
+              to={DONATION_ROUTES.MY_DONATIONS}
+              className="pf-dash-card"
+            >
+              <div className="pf-dash-card-content">
+                <h2 className="pf-dash-card-title">My gifts</h2>
+                <p className="pf-dash-card-desc">
+                  View your donation history, payment proofs, and contribution receipts.
+                </p>
+              </div>
+              <div className="pf-dash-card-footer">
+                <span className="pf-dash-card-action">
+                  Open <span className="pf-dash-card-action-arrow" aria-hidden="true">→</span>
+                </span>
+              </div>
+            </Link>
+
+            {/* Card 3: Browse shelters */}
+            <Link
+              to={SHELTER_ROUTES.BROWSE}
+              className="pf-dash-card"
+            >
+              <div className="pf-dash-card-content">
+                <h2 className="pf-dash-card-title">Browse shelters</h2>
+                <p className="pf-dash-card-desc">
+                  Discover verified animal rescue shelters and sanctuaries across India.
+                </p>
+              </div>
+              <div className="pf-dash-card-footer">
+                <span className="pf-dash-card-action">
+                  Open <span className="pf-dash-card-action-arrow" aria-hidden="true">→</span>
+                </span>
+              </div>
+            </Link>
+
+            {/* Card 4: Shelter status / registration depending on hasShelter */}
+            <Link
+              to={hasShelter ? SHELTER_ROUTES.STATUS : SHELTER_ROUTES.REGISTER}
+              className="pf-dash-card"
+            >
+              <div className="pf-dash-card-content">
+                <h2 className="pf-dash-card-title">
+                  {hasShelter ? 'My shelter status' : 'Register your shelter'}
+                </h2>
+                <p className="pf-dash-card-desc">
+                  {hasShelter
+                    ? 'Check your registered shelter verification status and profile details.'
+                    : 'Enroll an animal shelter to receive direct public donations and support.'}
+                </p>
+              </div>
+              <div className="pf-dash-card-footer">
+                <span className="pf-dash-card-action">
+                  Open <span className="pf-dash-card-action-arrow" aria-hidden="true">→</span>
+                </span>
+              </div>
+            </Link>
+          </div>
+        </section>
       </main>
 
       <Footer />

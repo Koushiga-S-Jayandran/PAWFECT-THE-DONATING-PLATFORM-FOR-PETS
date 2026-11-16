@@ -77,6 +77,77 @@
         }
       },
       "required": ["count", "windowStart", "lastSentAt"]
+    },
+    "AdoptionListing": {
+      "title": "AdoptionListing",
+      "description": "Admin-moderated companion animal adoption listing in Tamil Nadu or Kerala",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "listerUid": { "type": "string", "maxLength": 128 },
+        "listerType": { "type": "string", "enum": ["individual", "shelter"] },
+        "verifiedShelter": { "type": "boolean" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "species": { "type": "string", "enum": ["dog", "cat", "other"] },
+        "breed": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "ageMonths": { "type": "integer" },
+        "gender": { "type": "string", "enum": ["male", "female", "unknown"] },
+        "size": { "type": "string", "enum": ["small", "medium", "large"] },
+        "story": { "type": "string", "minLength": 30, "maxLength": 1000 },
+        "stateCode": { "type": "string", "enum": ["TN", "KL"] },
+        "district": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "city": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected", "changes_requested", "adopted", "on_hold", "expired_hidden"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "listerUid", "listerType", "verifiedShelter", "name", "species", "story", "stateCode", "status", "createdAt", "updatedAt"]
+    },
+    "ListingPrivateContact": {
+      "title": "ListingPrivateContact",
+      "description": "Protected lister mobile number, accessible only to lister, admin, or accepted adopter",
+      "type": "object",
+      "properties": {
+        "listingId": { "type": "string", "maxLength": 128 },
+        "listerUid": { "type": "string", "maxLength": 128 },
+        "contactName": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "phone": { "type": "string", "pattern": "^\\+91[6-9][0-9]{9}$" },
+        "revealOnlyToApproved": { "type": "boolean" },
+        "otpVerifiedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["listingId", "listerUid", "contactName", "phone", "revealOnlyToApproved"]
+    },
+    "AdoptionRequest": {
+      "title": "AdoptionRequest",
+      "description": "Adopter inquiry with deterministic ID {adopterId}_{listingId}",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 256 },
+        "petId": { "type": "string", "maxLength": 128 },
+        "adopterId": { "type": "string", "maxLength": 128 },
+        "shelterId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "petId", "adopterId", "shelterId", "status", "createdAt"]
+    },
+    "ListingReport": {
+      "title": "ListingReport",
+      "description": "Safety/scam report submitted against a listing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 256 },
+        "listingId": { "type": "string", "maxLength": 128 },
+        "reporterUid": { "type": "string", "maxLength": 128 },
+        "reason": { "type": "string", "enum": ["suspected_sale", "fraud_or_upfront_fee", "animal_cruelty", "misleading_info", "other"] },
+        "details": { "type": "string", "minLength": 10, "maxLength": 500 },
+        "status": { "type": "string", "enum": ["open", "resolved_dismissed", "resolved_removed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "listingId", "reporterUid", "reason", "details", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -91,6 +162,22 @@
     "/verificationThrottle/{emailHash}": {
       "schema": "VerificationThrottle",
       "description": "Verification email attempt limiter indexed by SHA-256 hash of email"
+    },
+    "/adoptionListings/{listingId}": {
+      "schema": "AdoptionListing",
+      "description": "Admin-moderated animal adoption listings (no private phone)"
+    },
+    "/adoptionListings/{listingId}/private/contact": {
+      "schema": "ListingPrivateContact",
+      "description": "Restricted lister phone contact isolated from public listing"
+    },
+    "/adoptionRequests/{requestId}": {
+      "schema": "AdoptionRequest",
+      "description": "Adopter adoption interest applications"
+    },
+    "/listingReports/{reportId}": {
+      "schema": "ListingReport",
+      "description": "Moderation reports flagged by signed-in users"
     }
   }
 }

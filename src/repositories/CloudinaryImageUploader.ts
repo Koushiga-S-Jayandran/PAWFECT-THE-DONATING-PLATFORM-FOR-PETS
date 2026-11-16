@@ -7,9 +7,7 @@
  */
 
 import {
-  CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_UPLOAD_PRESET,
-  PROOF_FOLDER,
   CLOUDINARY_UPLOAD_URL,
   CLOUDINARY_DELIVERY_BASE,
 } from '../config/storageConfig.js';
@@ -24,7 +22,6 @@ export class CloudinaryImageUploader implements ImageUploader {
     const formData = new FormData();
     formData.append('file', blob, `proof_${hash}.jpg`);
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    formData.append('folder', PROOF_FOLDER);
 
     try {
       const response = await fetch(CLOUDINARY_UPLOAD_URL, {
@@ -36,12 +33,19 @@ export class CloudinaryImageUploader implements ImageUploader {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        let errMessage = 'Upload failed';
+        let errMessage = response.statusText || 'Upload failed';
         try {
-          const errData = await response.json();
-          errMessage = errData.error?.message || response.statusText;
+          const rawText = await response.text();
+          if (rawText) {
+            try {
+              const errData = JSON.parse(rawText);
+              errMessage = errData?.error?.message || errData?.message || rawText;
+            } catch {
+              errMessage = rawText;
+            }
+          }
         } catch {
-          errMessage = response.statusText;
+          // keep fallback
         }
         throw new UploadFailedError(`Cloudinary error: ${errMessage}`);
       }

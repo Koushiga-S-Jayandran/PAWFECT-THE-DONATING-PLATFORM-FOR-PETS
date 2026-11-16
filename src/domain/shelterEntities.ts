@@ -17,6 +17,7 @@ export type ShelterStatus =
 export interface Shelter {
   readonly ownerId: string;
   readonly name: string;
+  readonly state: 'TAMIL_NADU' | 'KERALA';
   readonly stateCode: string;
   readonly district: string;
   readonly area: string;
@@ -31,6 +32,9 @@ export interface Shelter {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly approvedAt: string | null;
+  readonly is_demo?: boolean;
+  readonly isDemo?: boolean;
+  readonly coverImage?: string;
 }
 
 export interface ShelterPrivate {

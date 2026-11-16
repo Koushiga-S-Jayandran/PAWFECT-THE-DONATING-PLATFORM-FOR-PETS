@@ -30,6 +30,16 @@ import { MyDonationsPage } from './features/donation/MyDonationsPage.js';
 import { DONATION_ROUTES } from './config/donationRoutes.js';
 import { DonorProofPage } from './features/donor/DonorProofPage.js';
 import { PROOF_ROUTES } from './config/proofRoutes.js';
+import { PetBrowsePage } from './features/adoption/PetBrowsePage.js';
+import { PetDetailPage } from './features/adoption/PetDetailPage.js';
+import { MyAdoptionsPage } from './features/adoption/MyAdoptionsPage.js';
+import { SavedPetsPage } from './features/adoption/SavedPetsPage.js';
+import { AdopterProfilePage } from './features/adoption/AdopterProfilePage.js';
+import { ListAnimalPage } from './features/adoption/list/ListAnimalPage.js';
+import { MyListingsPage } from './features/adoption/list/MyListingsPage.js';
+import { AdminAdoptionsPage } from './features/admin/AdminAdoptionsPage.js';
+
+import { AuthProvider } from './context/AuthContext.js';
 
 export default function App() {
   useEffect(() => {
@@ -40,8 +50,9 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <Routes>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
         {/* Public Landing Page */}
         <Route path={ROUTES.HOME} element={<LandingPage />} />
 
@@ -64,6 +75,58 @@ export default function App() {
           element={
             <RequireAuth>
               <DashboardPage />
+            </RequireAuth>
+          }
+        />
+
+        {/* Pet Adoption Portal Routes */}
+        <Route path={ROUTES.PETS} element={<PetBrowsePage />} />
+        <Route
+          path={ROUTES.LIST_ANIMAL}
+          element={
+            <RequireAuth>
+              <ListAnimalPage />
+            </RequireAuth>
+          }
+        />
+        <Route path={ROUTES.PET_DETAIL} element={<PetDetailPage />} />
+        <Route
+          path={ROUTES.MY_LISTINGS}
+          element={
+            <RequireAuth>
+              <MyListingsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={ROUTES.ADMIN_ADOPTIONS}
+          element={
+            <RequireAuth>
+              <AdminAdoptionsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={ROUTES.MY_ADOPTIONS}
+          element={
+            <RequireAuth>
+              <MyAdoptionsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={ROUTES.SAVED_PETS}
+          element={
+            <RequireAuth>
+              <SavedPetsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={ROUTES.PROFILE}
+          element={
+            <RequireAuth>
+              <AdopterProfilePage />
             </RequireAuth>
           }
         />
@@ -166,5 +229,6 @@ export default function App() {
         <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
       </Routes>
     </BrowserRouter>
-  );
+  </AuthProvider>
+);
 }

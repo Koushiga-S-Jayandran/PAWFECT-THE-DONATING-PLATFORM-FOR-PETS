@@ -140,7 +140,10 @@ export function sanitizeRedirectPath(rawPath: string | null | undefined): string
   // Extract base path without query parameters
   const basePath = trimmed.split('?')[0];
 
-  if (ALLOWED_REDIRECT_PATHS.includes(basePath)) {
+  if (
+    ALLOWED_REDIRECT_PATHS.includes(basePath) ||
+    basePath.startsWith('/pets/')
+  ) {
     return trimmed;
   }
 

@@ -12,8 +12,8 @@ import {
 import {
   shelterRegistrationService,
   shelterReader,
-  authGateway,
 } from '../../app/container.js';
+import { useAuth } from '../../context/AuthContext.js';
 import { Header } from '../../ui/components/Header.js';
 import { Footer } from '../../ui/components/Footer.js';
 import { Card } from '../../ui/components/Card.js';
@@ -40,8 +40,7 @@ export const ShelterRegisterPage: React.FC = () => {
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isExistingChecking, setIsExistingChecking] = useState(true);
 
-  const currentUser = authGateway.getCurrentUser();
-
+  const { user } = useAuth();
   const enabledRegions = getEnabledRegions();
 
   const {
@@ -76,22 +75,35 @@ export const ShelterRegisterPage: React.FC = () => {
 
   // Check if current user already registered a shelter
   useEffect(() => {
-    if (!currentUser) {
+    let isMounted = true;
+    if (!user?.uid) {
       setIsExistingChecking(false);
       return;
     }
+
+    console.log(`[ShelterRegister] Checking existing registration for uid: ${user.uid}`);
     shelterReader
-      .getShelterById(currentUser.uid)
+      .getShelterById(user.uid)
       .then((existing) => {
+        if (!isMounted) return;
         if (existing) {
+          console.log(`[ShelterRegister] Shelter doc exists for uid: ${user.uid}. Redirecting to status.`);
           navigate(SHELTER_ROUTES.STATUS, { replace: true });
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.warn('[ShelterRegister] Existing shelter check non-fatal error:', err);
+      })
       .finally(() => {
-        setIsExistingChecking(false);
+        if (isMounted) {
+          setIsExistingChecking(false);
+        }
       });
-  }, [currentUser, navigate]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.uid, navigate]);
 
   const watchedStateCode = watch('stateCode');
   const watchedDistricts = getRegionByCode(watchedStateCode)?.districts || [];
@@ -141,19 +153,24 @@ export const ShelterRegisterPage: React.FC = () => {
   };
 
   const onSubmit = async (data: ShelterRegistrationFormData) => {
-    if (!currentUser) return;
+    if (!user) return;
     setIsSubmitting(true);
     setGeneralError(null);
 
+    console.log(`[ShelterRegister] Submitting registration for uid: ${user.uid}`);
     try {
-      await shelterRegistrationService.registerShelter({
-        ownerId: currentUser.uid,
-        isEmailVerified: currentUser.emailVerified,
+      const { shelterId } = await shelterRegistrationService.registerShelter({
+        ownerId: user.uid,
+        isEmailVerified: user.emailVerified,
         data,
       });
 
+      console.log(
+        `[ShelterRegister] Shelter doc written successfully for shelterId: ${shelterId}. Fully awaited. Navigating to status.`
+      );
       navigate(SHELTER_ROUTES.STATUS, { replace: true });
     } catch (err: any) {
+      console.error('[ShelterRegister] Registration error:', err);
       setGeneralError(
         err?.message ||
           'Failed to submit shelter registration. Please review all fields and retry.'

@@ -55,15 +55,25 @@ export class SignupService {
 
       // 3. Write User Profile to Firestore (role fixed to DONOR)
       const nowIso = new Date().toISOString();
-      await this.userProfileRepo.createProfile({
-        uid: created.uid,
-        fullName: data.fullName.trim(),
-        phone: data.phone,
-        consentAt: nowIso,
-        consentVersion: APP_CONFIG.consentVersion,
-        role: 'DONOR',
-        createdAt: nowIso,
-      });
+      try {
+        await this.userProfileRepo.createProfile({
+          uid: created.uid,
+          fullName: data.fullName.trim(),
+          phone: data.phone,
+          consentAt: nowIso,
+          consentVersion: APP_CONFIG.consentVersion,
+          role: 'DONOR',
+          createdAt: nowIso,
+        });
+      } catch (profileError) {
+        // Prevent orphan auth user if profile document creation fails
+        try {
+          await this.authGateway.signOut();
+        } catch {
+          // ignore signout failure
+        }
+        throw profileError;
+      }
 
       // 4. Send Verification Email
       await this.authGateway.sendEmailVerification();

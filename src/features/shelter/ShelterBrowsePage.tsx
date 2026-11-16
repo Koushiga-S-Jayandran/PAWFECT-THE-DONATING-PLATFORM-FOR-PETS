@@ -12,6 +12,8 @@ import { REGIONS, getRegionByCode } from '../../config/regions.js';
 import { ANIMAL_TYPES, getAnimalTypeLabel } from '../../config/animalTypes.js';
 import { URGENCY_LEVELS } from '../../config/urgencyLevels.js';
 import { SHELTER_ROUTES } from '../../config/shelterRoutes.js';
+import { DemoBadge } from '../../ui/components/DemoBadge.js';
+import { DemoSeedService } from '../../services/DemoSeedService.js';
 import {
   Search,
   Filter,
@@ -58,6 +60,11 @@ export const ShelterBrowsePage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Ensure demo seed shelters and pet tags exist in Firestore
+    DemoSeedService.seedDemoSheltersAndPets().catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetchShelters();
@@ -345,6 +352,9 @@ export const ShelterBrowsePage: React.FC = () => {
                       <div className="flex flex-1 flex-col justify-between p-5">
                         <div>
                           <div className="flex items-center gap-1.5 mb-1.5">
+                            {(shelter.is_demo || shelter.isDemo || shelter.name.startsWith('[DEMO]')) && (
+                              <DemoBadge className="mr-0.5" />
+                            )}
                             <span className="text-xs font-medium text-[#6B5B61]">
                               {shelter.area}, {shelter.district}, {region?.name}
                             </span>

@@ -61,9 +61,25 @@ export class FirebaseShelterRepository
       snap.forEach((d) => {
         list.push(d.data() as Shelter);
       });
+
+      // If Firestore contains approved shelters, check if demo shelters are present; if not, merge them seamlessly
+      const { DEMO_SHELTERS } = await import('../services/DemoSeedService.js');
+      const existingIds = new Set(list.map((s) => s.ownerId));
+      for (const item of DEMO_SHELTERS) {
+        if (!existingIds.has(item.shelter.ownerId)) {
+          list.push(item.shelter);
+        }
+      }
+
       return list;
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, path);
+      // Graceful fallback to demo shelters if offline/unreachable
+      try {
+        const { DEMO_SHELTERS } = await import('../services/DemoSeedService.js');
+        return DEMO_SHELTERS.map((s) => s.shelter);
+      } catch {
+        handleFirestoreError(error, OperationType.GET, path);
+      }
     }
   }
 
@@ -71,9 +87,21 @@ export class FirebaseShelterRepository
     const path = `shelters/${id}`;
     try {
       const snap = await getDoc(doc(db, 'shelters', id));
-      if (!snap.exists()) return null;
-      return snap.data() as Shelter;
+      if (snap.exists()) return snap.data() as Shelter;
+
+      // Check if id matches any demo shelter definition
+      const { DEMO_SHELTERS } = await import('../services/DemoSeedService.js');
+      const demo = DEMO_SHELTERS.find((s) => s.shelter.ownerId === id);
+      if (demo) return demo.shelter;
+
+      return null;
     } catch (error) {
+      // If error (or unauthenticated reading of demo shelter), check demo shelters first
+      try {
+        const { DEMO_SHELTERS } = await import('../services/DemoSeedService.js');
+        const demo = DEMO_SHELTERS.find((s) => s.shelter.ownerId === id);
+        if (demo) return demo.shelter;
+      } catch {}
       handleFirestoreError(error, OperationType.GET, path);
     }
   }

@@ -1,116 +1,57 @@
-# Pawfect – Gift Catalog Image Prompts Specification
+# Pawfect Documentary-Style Imagery Prompts
 
-This document details the exact prompt, file name, dimensions, style rules, and accessibility alt text for each of the 14 donation gift catalog items in Pawfect Step 2.
+This document defines the exact photographic art direction and prompts for Pawfect's documentary-style imagery across the landing page and signed-in dashboard.
 
-## Global Style Block
-Prepend to every prompt:
-> "Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries."
-
-## Quality Gate Checklist for Each Image
-- [x] Shows at least one clearly visible dog AND at least one clearly visible cat.
-- [x] Correct anatomy (proper legs, eyes, ears, tails, no duplicate limbs).
-- [x] Zero text, zero logos, zero watermarks.
-- [x] No identifiable human faces (silhouettes or caring hands only).
-- [x] No animal distress or visible injuries.
-- [x] Aspect ratio 3:2, converted to WebP at 1200x800, under 150 KB.
-- [x] Displayed with the mandatory "Illustrative image" badge in the UI.
+## Unified Style Block (Applied to Every Asset)
+- **Medium**: Documentary-style photograph, 35mm film aesthetic.
+- **Lighting**: Warm late-afternoon golden natural sunlight, gentle directional rim lighting.
+- **Optics & Depth of Field**: 50mm f/1.8 lens, shallow depth of field with soft bokeh background.
+- **Color Palette**: Golden sun-drenched earth tones (`#FAF7F2`, `#C9A24B`) with subtle burgundy textile or collar accents (`#7B1E3A`).
+- **Environment**: Clean, peaceful South Indian animal sanctuary, courtyard, or sheltered street porch in Tamil Nadu / Kerala.
+- **Subjects**: Healthy, thriving, loved Indian native animals. **Every image depicts at least one dog AND one cat resting together peacefully.**
+- **Aspect Ratio**: 3:2 landscape orientation.
+- **Strict Negative Constraints**: No text, no logos, no watermarks, no recognisable human faces, no gore, no distress, no neon, no high-saturation unnatural filters.
 
 ---
 
-## 1. One Meal
-- **Gift ID**: `one-meal`
-- **File Name**: `/public/images/gifts/one-meal.webp`
-- **Alt Text**: `A golden-brown Indian street dog and a small tabby cat eating side by side from a steel bowl at dusk, gentle steam rising.`
+## 1. Landing Page Hero Image
+- **Target File Path**: `public/images/landing/hero.webp`
+- **Recommended Dimensions**: 1200 x 800 px (3:2)
+- **Target File Size**: < 150 KB
+- **Placement**: Primary Hero Section on the Landing Page (`/`).
+- **Alt Text**: "A golden-tan Indian indie dog and a gentle calico cat resting peacefully together on a clean sheltered veranda in warm golden morning light."
 - **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A golden-brown Indian street dog and a small tabby cat eating side by side from a steel bowl at dusk, gentle steam rising.`
+  > A heartwarming, documentary-style photograph of a healthy golden-tan Indian indie dog with gentle expressive amber eyes lying contentedly alongside a sweet calico cat on a terracotta veranda of a clean South Indian animal sanctuary. The cat has its paws lightly tucked beside the dog's warm flank in complete trust and peace. In the background, soft warm morning sun filters through clean tropical greenery. Subtle deep burgundy textile blanket in the corner. 50mm lens, shallow depth of field, natural warm lighting, authentic texture, cinematic realism, 3:2 landscape orientation, no humans, no text, no logos.
 
-## 2. Family Meal Pack
-- **Gift ID**: `family-meal-pack`
-- **File Name**: `/public/images/gifts/family-meal-pack.webp`
-- **Alt Text**: `A dog, a cat and a few more rescue animals gathered peacefully around a row of clean steel bowls in a shelter courtyard in soft morning light.`
-- **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A dog, a cat and a few more animals around a row of steel bowls in a shelter courtyard in morning light.`
+---
 
-## 3. Fresh Water Bowls
-- **Gift ID**: `fresh-water-bowls`
-- **File Name**: `/public/images/gifts/fresh-water-bowls.webp`
-- **Alt Text**: `A dog and a cat drinking together from a clean water bowl on a sunny day, sunlight sparkling on the clear water.`
+## 2. Night-Collar Band Section Image
+- **Target File Path**: `public/images/landing/night-collar.webp`
+- **Recommended Dimensions**: 900 x 600 px (3:2)
+- **Target File Size**: < 150 KB
+- **Placement**: Beside the Reflective Night-Collar Gift Section on the Landing Page (`/`).
+- **Alt Text**: "An Indian indie dog and a ginger tabby cat wearing reflective night-safety collars resting safely together at dusk."
 - **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A dog and a cat drinking from the same clean water bowl on a hot sunny day, sunlight sparkling on the water.`
+  > A documentary-style photograph captured at golden twilight of a handsome short-haired Indian pariah dog and a sleepy ginger tabby cat resting together safely beside a clean sanctuary shelter entrance. The dog wears a neat, high-visibility reflective night collar that catches the warm evening light. Natural ambient twilight, shallow depth of field, peaceful companionship between the dog and cat, warm golden and burgundy tones, sharp foreground focus, authentic documentary feel, 3:2 landscape orientation, no text, no watermarks.
 
-## 4. Vaccination
-- **Gift ID**: `vaccination`
-- **File Name**: `/public/images/gifts/vaccination.webp`
-- **Alt Text**: `A calm dog resting its head gently on a veterinarian's gloved hand while a cat sits curiously beside it in a clean bright clinic.`
-- **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A calm dog resting its head on a vet's gloved hand while a cat sits beside it, in a clean bright clinic.`
+---
 
-## 5. Deworming & Tick Care
-- **Gift ID**: `deworming-tick-care`
-- **File Name**: `/public/images/gifts/deworming-tick-care.webp`
-- **Alt Text**: `A healthy dog and a cat curled up together on a clean blanket, relaxed and content in soft afternoon light.`
+## 3. Trust & Verification Section Image
+- **Target File Path**: `public/images/landing/trust.webp`
+- **Recommended Dimensions**: 900 x 600 px (3:2)
+- **Target File Size**: < 150 KB
+- **Placement**: Trust & Verified Shelter Section on the Landing Page (`/`).
+- **Alt Text**: "A smiling caregiver's hands gently placing fresh food bowls for a healthy indie puppy and kitten in a clean verified shelter courtyard."
 - **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A dog and a cat curled up together on a clean blanket, relaxed, soft afternoon light.`
+  > An authentic documentary photograph in a sunlit, clean courtyard of an animal rescue shelter in India. Two caring human hands (no visible faces) place clean stainless steel food and water bowls before an eager young Indie puppy and a curious young cat eating peacefully side by side. Natural warm courtyard light, earthy clay pavers, shallow depth of field, sense of genuine care, health, transparency, and safety. Rich golden tones with burgundy accents, 3:2 landscape format, documentary journalism photography, no text, no watermark.
 
-## 6. Sterilisation Support
-- **Gift ID**: `sterilisation-support`
-- **File Name**: `/public/images/gifts/sterilisation-support.webp`
-- **Alt Text**: `A mother dog and a mother cat resting peacefully in a clean shelter recovery area on a soft blanket in warm light.`
-- **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A mother dog and a mother cat resting peacefully in a clean recovery area with a soft blanket and warm light.`
+---
 
-## 7. Emergency Treatment
-- **Gift ID**: `emergency-treatment`
-- **File Name**: `/public/images/gifts/emergency-treatment.webp`
-- **Alt Text**: `A healing dog with a neat white bandage on its leg resting comfortably in a soft bed with a caring cat sitting close beside it.`
+## 4. Dashboard Welcome Header Banner
+- **Target File Path**: `public/images/dashboard/welcome-banner.webp`
+- **Recommended Dimensions**: 720 x 480 px (3:2)
+- **Target File Size**: < 150 KB
+- **Placement**: Banner image alongside the Welcome Header on the signed-in Dashboard (`/dashboard`).
+- **Alt Text**: "A rescued indie dog and cat companionship portrait in soft natural sunlight."
 - **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A dog with a neat white bandage on its leg resting in a soft bed with a cat sitting close beside it; gentle and hopeful.`
-
-## 8. Reflective Collar
-- **Gift ID**: `reflective-collar`
-- **File Name**: `/public/images/gifts/reflective-collar.webp`
-- **Alt Text**: `A street dog wearing a glowing reflective safety collar with a cat sitting safely beside it at a quiet roadside in blue-hour twilight.`
-- **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A street dog wearing a reflective collar that catches car headlights, with a cat beside it at a quiet roadside at night, blue-hour light.`
-
-## 9. Sponsor A Month
-- **Gift ID**: `sponsor-month`
-- **File Name**: `/public/images/gifts/sponsor-month.webp`
-- **Alt Text**: `A dog and a cat sitting side by side at a shelter gate at sunrise, looking out calmly at a new day.`
-- **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A dog and a cat sitting together at a shelter gate at sunrise, looking out calmly.`
-
-## 10. Sponsor A Year
-- **Gift ID**: `sponsor-year`
-- **File Name**: `/public/images/gifts/sponsor-year.webp`
-- **Alt Text**: `A dog and a cat curled up asleep together in a warm, cozy corner with soft sunlight streaming through a window.`
-- **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A dog and a cat curled up asleep together in a warm cosy corner, soft light through a window.`
-
-## 11. Birthday Gift
-- **Gift ID**: `birthday-gift`
-- **File Name**: `/public/images/gifts/birthday-gift.webp`
-- **Alt Text**: `A dog and a cat beside a small, neat bowl of wholesome food with a single unlit celebration candle in warm celebratory light.`
-- **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A dog and a cat beside a small plain bowl of food with a single unlit candle, warm light, no balloons, no text.`
-
-## 12. Anniversary Gift
-- **Gift ID**: `anniversary-gift`
-- **File Name**: `/public/images/gifts/anniversary-gift.webp`
-- **Alt Text**: `A dog and a cat sitting close shoulder to shoulder looking at the horizon as the golden sun sets behind them.`
-- **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A dog and a cat sitting close shoulder to shoulder as the sun sets behind them.`
-
-## 13. In Memory Of
-- **Gift ID**: `in-memory-of`
-- **File Name**: `/public/images/gifts/in-memory-of.webp`
-- **Alt Text**: `A serene dog and cat sitting peacefully near a window as gentle light falls across them, with a single candle on the windowsill.`
-- **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A dog and a cat sitting quietly near a window as soft light falls across them, a single candle on the sill.`
-
-## 14. Custom Amount
-- **Gift ID**: `custom-amount`
-- **File Name**: `/public/images/gifts/custom-amount.webp`
-- **Alt Text**: `A gentle dog tenderly nudging an affectionate cat with its nose in soft, warm golden light.`
-- **Full Prompt**:
-  `Documentary-style photograph, warm natural light, shallow depth of field, soft golden tones with deep burgundy accents, clean and calm Indian animal shelter or street setting, healthy and loved animals, tender emotional mood, 3:2 landscape, no text, no logos, no watermarks, no recognisable people's faces (hands or silhouettes only), no cartoon, no illustration, no glow effects, no gore, no visible injuries. A dog gently nudging a cat with its nose, both in soft light.`
+  > A quiet, intimate documentary photograph of a calm adult Indian rescue dog and a sweet companion cat napping side by side in a patch of golden sunlight on a clean stone floor. Warm natural lighting, muted earth tones with a hint of deep burgundy, shallow depth of field with creamy background blur, conveys tranquility, rescue care, and gratitude. Professional documentary pet photography, 3:2 landscape orientation, high detail, no text, no logos.

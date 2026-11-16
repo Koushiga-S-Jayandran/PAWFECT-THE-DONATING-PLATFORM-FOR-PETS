@@ -3,16 +3,21 @@
  * Strict types representing core business models and security constructs.
  */
 
-export type UserRole = 'DONOR';
+export type UserRole = 'DONOR' | 'adopter' | 'shelter' | 'admin';
 
 export interface UserProfile {
   uid: string;
   fullName: string;
+  name?: string;
+  email?: string;
   phone: string;
-  consentAt: string;
-  consentVersion: string;
+  city?: string;
+  photoURL?: string;
+  consentAt?: string;
+  consentVersion?: string;
   role: UserRole;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface LoginThrottleDoc {

@@ -27,7 +27,10 @@ import {
   shelterStep2Schema,
   shelterStep3Schema,
   moderationActionSchema,
+  type ShelterRegistrationFormData,
 } from '../src/security/shelterValidation.js';
+import { ShelterRegistrationService } from '../src/services/ShelterRegistrationService.js';
+import { InMemoryShelterRepository } from '../src/repositories/InMemoryShelterRepository.js';
 
 test('Region Registry: Tamil Nadu and Kerala only', () => {
   const enabled = getEnabledStates();
@@ -193,3 +196,111 @@ test('Validation: Form Schemas (Step 1, Step 2, Step 3)', () => {
   });
   assert.equal(badConsent.success, false);
 });
+
+test('Registration Document Compliance with firestore.rules create schema', async () => {
+  const repo = new InMemoryShelterRepository();
+  const service = new ShelterRegistrationService(repo, repo);
+
+  const ownerId = '4ipvozoLNdf0miNAVN6EWyjs9nA3';
+  const formDataTN: ShelterRegistrationFormData = {
+    name: 'Karuna Animal Sanctuary',
+    stateCode: 'TN',
+    district: 'Chennai',
+    area: 'Adyar',
+    animalTypes: ['DOG', 'CAT'],
+    contactPerson: 'Dr. K. Meenakshi',
+    phone: '+919876543210',
+    fullAddress: '12 Green Avenue, Adyar, Chennai 600020',
+    upiId: 'karuna@okaxis',
+    upiHolderName: 'Karuna Foundation',
+    registrationNumber: 'TN-REG-2021-9981',
+    supportLink: 'https://karuna-animals.org',
+    description: 'Dedicated rescue shelter caring for street animals in Chennai for over 8 years.',
+    urgency: 'NORMAL',
+    urgencyNote: '',
+    consent: true,
+  };
+
+  // Register shelter for Tamil Nadu
+  const { shelterId } = await service.registerShelter({
+    ownerId,
+    isEmailVerified: true,
+    data: formDataTN,
+  });
+
+  assert.equal(shelterId, ownerId);
+
+  const created = await repo.getShelterById(ownerId);
+  assert.ok(created, 'Shelter document must be persisted');
+
+  // Verify all rule constraints required by firestore.rules create block:
+  // 1. state in enabledStates() -> ['TAMIL_NADU', 'KERALA']
+  assert.equal(created.state, 'TAMIL_NADU', 'state field must equal TAMIL_NADU for TN');
+  assert.ok(['TAMIL_NADU', 'KERALA'].includes(created.state));
+
+  // 2. status == 'PENDING'
+  assert.equal(created.status, 'PENDING', 'status must be PENDING');
+
+  // 3. statusVersion == 1
+  assert.equal(created.statusVersion, 1, 'statusVersion must be 1');
+
+  // 4. resubmitCount <= 3 and starts at 0
+  assert.equal(created.resubmitCount, 0, 'resubmitCount must be 0');
+  assert.ok(created.resubmitCount <= 3);
+
+  // 5. verified == false
+  assert.equal(created.verified, false, 'verified must be false on initial registration');
+
+  // 6. ownerId matches
+  assert.equal(created.ownerId, ownerId, 'ownerId must match auth user id');
+
+  // 7. exact keys check
+  const actualKeys = Object.keys(created).sort();
+  const expectedKeys = [
+    'animalTypes',
+    'approvedAt',
+    'area',
+    'createdAt',
+    'description',
+    'district',
+    'name',
+    'ownerId',
+    'resubmitCount',
+    'state',
+    'stateCode',
+    'status',
+    'statusVersion',
+    'updatedAt',
+    'urgency',
+    'urgencyNote',
+    'verified',
+  ].sort();
+  assert.deepEqual(actualKeys, expectedKeys, 'Shelter public document must contain exact expected keys');
+
+  // Test Kerala registration maps state to KERALA
+  const repoKL = new InMemoryShelterRepository();
+  const serviceKL = new ShelterRegistrationService(repoKL, repoKL);
+  const ownerIdKL = 'user_kerala_456';
+  const formDataKL: ShelterRegistrationFormData = {
+    ...formDataTN,
+    stateCode: 'KL',
+    district: 'Ernakulam',
+    area: 'Aluva',
+  };
+
+  await serviceKL.registerShelter({
+    ownerId: ownerIdKL,
+    isEmailVerified: true,
+    data: formDataKL,
+  });
+
+  const createdKL = await repoKL.getShelterById(ownerIdKL);
+  assert.ok(createdKL);
+  assert.equal(createdKL.state, 'KERALA', 'state field must equal KERALA for KL');
+  assert.ok(['TAMIL_NADU', 'KERALA'].includes(createdKL.state));
+  assert.equal(createdKL.status, 'PENDING');
+  assert.equal(createdKL.statusVersion, 1);
+  assert.equal(createdKL.resubmitCount, 0);
+  assert.equal(createdKL.verified, false);
+});
+

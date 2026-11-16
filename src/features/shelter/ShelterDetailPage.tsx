@@ -10,6 +10,7 @@ import { Button } from '../../ui/components/Button.js';
 import { SHELTER_ROUTES } from '../../config/shelterRoutes.js';
 import { getRegionByCode } from '../../config/regions.js';
 import { getAnimalTypeLabel } from '../../config/animalTypes.js';
+import { DemoBadge } from '../../ui/components/DemoBadge.js';
 import {
   CheckCircle2,
   MapPin,
@@ -115,6 +116,10 @@ export const ShelterDetailPage: React.FC = () => {
             <div className="lg:col-span-8 text-left space-y-6">
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-2">
+                  {(shelter.is_demo || shelter.isDemo || shelter.name.startsWith('[DEMO]')) && (
+                    <DemoBadge />
+                  )}
+
                   {shelter.verified && (
                     <Badge variant="success" className="gap-1 py-1 px-3">
                       <CheckCircle2 className="h-3.5 w-3.5" />
@@ -150,6 +155,22 @@ export const ShelterDetailPage: React.FC = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Demo Shelter Notice */}
+              {(shelter.is_demo || shelter.isDemo || shelter.name.startsWith('[DEMO]')) && (
+                <div
+                  role="status"
+                  className="rounded-2xl border border-[#7B1E3A]/25 bg-[#F3E3E8]/70 p-4 text-xs text-[#7B1E3A] flex items-start gap-3"
+                >
+                  <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-[#7B1E3A]" />
+                  <div>
+                    <p className="font-semibold text-sm">Demo Shelter Notice</p>
+                    <p className="mt-0.5 leading-relaxed text-[#231A1D]">
+                      This is a demo shelter for demonstration purposes. Donations are not real. Do not send real funds to this placeholder profile.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Urgency Callout if Urgent or Critical */}
               {(shelter.urgency === 'URGENT' || shelter.urgency === 'CRITICAL') && (
@@ -243,19 +264,38 @@ export const ShelterDetailPage: React.FC = () => {
 
                 {/* Active Gift & Donation Button */}
                 <div className="pt-2 space-y-2">
-                  <Link to={`/gifts?shelterId=${shelter.ownerId}`}>
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      className="w-full justify-center gap-2 font-semibold"
-                    >
-                      <Heart className="h-4 w-4" />
-                      <span>Send a Gift to this Shelter</span>
-                    </Button>
-                  </Link>
-                  <p className="text-center text-[11px] text-[#2E7D5B] font-medium">
-                    100% direct UPI giving • Zero platform fee
-                  </p>
+                  {(shelter.is_demo || shelter.isDemo || shelter.name.startsWith('[DEMO]')) ? (
+                    <div className="space-y-2">
+                      <Button
+                        variant="primary"
+                        size="lg"
+                        disabled
+                        className="w-full justify-center gap-2 font-semibold opacity-60 cursor-not-allowed"
+                      >
+                        <Heart className="h-4 w-4" />
+                        <span>Real Donations Disabled (Demo)</span>
+                      </Button>
+                      <p className="text-center text-[11px] text-[#7B1E3A] font-medium">
+                        This is a demo shelter. Real money UPI transactions are disabled.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <Link to={`/gifts?shelterId=${shelter.ownerId}`}>
+                        <Button
+                          variant="primary"
+                          size="lg"
+                          className="w-full justify-center gap-2 font-semibold"
+                        >
+                          <Heart className="h-4 w-4" />
+                          <span>Send a Gift to this Shelter</span>
+                        </Button>
+                      </Link>
+                      <p className="text-center text-[11px] text-[#2E7D5B] font-medium">
+                        100% direct UPI giving • Zero platform fee
+                      </p>
+                    </>
+                  )}
                 </div>
               </Card>
             </div>

@@ -1,0 +1,77 @@
+/**
+ * Dashboard Motion Styles
+ * Scoped pure CSS subtle transitions (150-220ms ease-out).
+ * Strictly animates only opacity and transform.
+ * Respects prefers-reduced-motion without breaking content visibility.
+ */
+
+@keyframes pfDashFadeRise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pfDashImageFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Safe default: content is always visible */
+.pf-dash-motion-section,
+.pf-dash-motion-card {
+  opacity: 1;
+  transform: translateY(0);
+  animation: pfDashFadeRise 200ms ease-out forwards;
+}
+
+/* Hover and focus lift of 2px on buttons and cards */
+.pf-dash-motion-lift {
+  transform: translateY(0);
+  transition: transform 180ms ease-out, opacity 180ms ease-out;
+}
+
+.pf-dash-motion-lift:hover {
+  transform: translateY(-2px);
+}
+
+.pf-dash-motion-lift:focus-visible {
+  transform: translateY(-2px);
+}
+
+/* Dashboard banner image fade */
+.pf-dash-motion-image {
+  opacity: 1;
+  transition: opacity 200ms ease-out;
+}
+
+.pf-dash-motion-image-loading {
+  opacity: 0;
+}
+
+.pf-dash-motion-image-loaded {
+  animation: pfDashImageFade 200ms ease-out forwards;
+}
+
+/* Respect prefers-reduced-motion: zero animation, everything visible */
+@media (prefers-reduced-motion: reduce) {
+  .pf-dash-motion-section,
+  .pf-dash-motion-card,
+  .pf-dash-motion-lift,
+  .pf-dash-motion-image,
+  .pf-dash-motion-image-loading,
+  .pf-dash-motion-image-loaded {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}

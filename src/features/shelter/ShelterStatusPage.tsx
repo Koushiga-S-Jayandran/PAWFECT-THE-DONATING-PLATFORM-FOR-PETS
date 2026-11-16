@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   shelterReader,
   shelterRegistrationService,
-  authGateway,
 } from '../../app/container.js';
 import type { Shelter, ShelterPrivate } from '../../domain/shelterEntities.js';
 import { Header } from '../../ui/components/Header.js';
@@ -15,6 +14,7 @@ import { SHELTER_ROUTES } from '../../config/shelterRoutes.js';
 import { getRegionByCode } from '../../config/regions.js';
 import { getAnimalTypeLabel } from '../../config/animalTypes.js';
 import { URGENCY_LEVELS, type UrgencyLevelId } from '../../config/urgencyLevels.js';
+import { useAuth } from '../../context/AuthContext.js';
 import {
   Clock,
   CheckCircle2,
@@ -24,10 +24,13 @@ import {
   Building2,
   Edit3,
   RotateCw,
+  RefreshCw,
 } from 'lucide-react';
 
 export const ShelterStatusPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+
   const [shelter, setShelter] = useState<Shelter | null>(null);
   const [privateData, setPrivateData] = useState<ShelterPrivate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,14 +42,31 @@ export const ShelterStatusPage: React.FC = () => {
   const [isUpdatingUrgency, setIsUpdatingUrgency] = useState(false);
   const [urgencyUpdateSuccess, setUrgencyUpdateSuccess] = useState(false);
 
-  const currentUser = authGateway.getCurrentUser();
+  const loadData = React.useCallback(async () => {
+    if (!user?.uid) {
+      setIsLoading(false);
+      return;
+    }
 
-  const loadData = async () => {
-    if (!currentUser) return;
     setIsLoading(true);
     setError(null);
+    console.log(`[ShelterStatus] Fetching shelter doc for uid: ${user.uid}`);
+
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      setIsLoading(false);
+      setError('Fetching shelter details timed out. Please check your connection and retry.');
+      console.warn(`[ShelterStatus] 10-second timeout reached for uid: ${user.uid}`);
+    }, 10000);
+
     try {
-      const res = await shelterReader.getShelterByOwner(currentUser.uid);
+      const res = await shelterReader.getShelterByOwner(user.uid);
+      if (timedOut) return;
+
+      console.log(
+        `[ShelterStatus] Shelter doc loaded: exists=${!!res.shelter}, status=${res.shelter?.status || 'none'}`
+      );
       setShelter(res.shelter);
       setPrivateData(res.privateData);
       if (res.shelter) {
@@ -54,15 +74,28 @@ export const ShelterStatusPage: React.FC = () => {
         setUrgencyNote(res.shelter.urgencyNote || '');
       }
     } catch (err: any) {
-      setError('Unable to load shelter status. Please retry.');
+      if (timedOut) return;
+      console.error('[ShelterStatus] Error loading shelter:', err);
+      setError(err?.message || 'Unable to load shelter status. Please retry.');
     } finally {
-      setIsLoading(false);
+      clearTimeout(timeoutId);
+      if (!timedOut) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [user?.uid]);
 
   useEffect(() => {
-    loadData();
-  }, [currentUser]);
+    let isCancelled = false;
+    if (user?.uid) {
+      loadData();
+    } else if (!authLoading) {
+      setIsLoading(false);
+    }
+    return () => {
+      isCancelled = true;
+    };
+  }, [user?.uid, authLoading, loadData]);
 
   const handleUpdateUrgency = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,17 +117,42 @@ export const ShelterStatusPage: React.FC = () => {
     }
   };
 
+  const showSpinner = authLoading || isLoading;
+
   return (
     <div className="flex min-h-screen flex-col bg-[#FAF7F2] text-[#231A1D]">
       <Header />
 
       <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
         <div className="w-full max-w-2xl text-left">
-          {isLoading ? (
+          {showSpinner ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="h-8 w-8 animate-spin rounded-full border-3 border-[#7B1E3A] border-t-transparent" />
               <p className="text-xs text-[#6B5B61]">Loading shelter details...</p>
             </div>
+          ) : error ? (
+            <Card padding="lg" className="text-center shadow-xs space-y-4">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#B4423A]/10 text-[#B4423A]">
+                <AlertTriangle className="h-7 w-7" aria-hidden="true" />
+              </div>
+              <div>
+                <h1 className="font-heading text-xl font-medium text-[#231A1D]">
+                  Unable to load shelter
+                </h1>
+                <p className="mt-1 text-xs text-[#B4423A]">{error}</p>
+              </div>
+              <div className="pt-2 flex justify-center">
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => loadData()}
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Retry</span>
+                </Button>
+              </div>
+            </Card>
           ) : !shelter ? (
             <Card padding="lg" className="text-center shadow-xs space-y-5">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3E3E8] text-[#7B1E3A]">

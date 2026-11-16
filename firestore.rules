@@ -80,24 +80,41 @@ service cloud.firestore {
       // List queries: unconditionally forbidden (Pillar 8: Prevent directory scraping)
       allow list: if false;
 
-      // Creation: role must be DONOR, doc ID matches auth.uid
+      // Creation: role must be DONOR or adopter, doc ID matches auth.uid
       allow create: if isOwner(uid)
         && isValidId(uid)
-        && isValidUserProfile(incoming())
-        && incoming().role == 'DONOR';
+        && (
+          (isValidUserProfile(incoming()) && incoming().role == 'DONOR')
+          || incoming().role == 'adopter'
+        );
 
       // Update: role, createdAt, and consentAt cannot be mutated
       allow update: if isOwner(uid)
         && isValidId(uid)
-        && isValidUserProfile(incoming())
-        && incoming().role == existing().role
-        && incoming().createdAt == existing().createdAt
-        && incoming().consentAt == existing().consentAt
-        && incoming().consentVersion == existing().consentVersion
-        && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone']);
+        && (
+          (existing().role == 'DONOR'
+           && isValidUserProfile(incoming())
+           && incoming().role == existing().role
+           && incoming().createdAt == existing().createdAt
+           && incoming().consentAt == existing().consentAt
+           && incoming().consentVersion == existing().consentVersion
+           && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone']))
+          ||
+          (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'fullName', 'phone', 'city', 'photoURL', 'updatedAt', 'role']))
+        );
 
-      // Deletion: donor profile deletion only by verified owner
-      allow delete: if isOwner(uid) && isEmailVerified();
+      // Deletion: donor or adopter profile deletion by owner
+      allow delete: if isOwner(uid);
+
+      // Subcollections
+      match /favorites/{petId} {
+        allow read, write, delete: if isOwner(uid);
+      }
+
+      match /notifications/{id} {
+        allow read, update, delete: if isOwner(uid);
+        allow create: if signedInVerified();
+      }
     }
 
     // =========================================================================
@@ -277,6 +294,250 @@ service cloud.firestore {
       allow get: if request.auth != null && request.auth.uid == id;
       allow list: if isAdmin();
       allow write: if false; // Provisioned securely via Firebase Console / Admin SDK
+    }
+
+    // =========================================================================
+    // PETS & ADOPTIONS MODULE RULES
+    // =========================================================================
+
+    function isValidAdoptionListing(data) {
+      return data.keys().hasAll([
+          'id', 'listerUid', 'listerType', 'verifiedShelter', 'name', 'isUnnamed',
+          'species', 'breed', 'ageMonths', 'gender', 'size', 'color',
+          'vaccinated', 'sterilised', 'injuriesOrConditions', 'temperament',
+          'goodWithKids', 'goodWithOtherPets', 'photos', 'story',
+          'stateCode', 'stateName', 'district', 'city', 'contactName',
+          'revealOnlyToApproved', 'phoneVerified', 'status',
+          'duplicateFingerprint', 'lastActivityAt', 'expiresAt', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'listerUid', 'listerType', 'shelterId', 'shelterName', 'verifiedShelter',
+          'name', 'isUnnamed', 'species', 'breed', 'ageMonths', 'gender', 'size', 'color',
+          'vaccinated', 'sterilised', 'injuriesOrConditions', 'temperament',
+          'goodWithKids', 'goodWithOtherPets', 'photos', 'story',
+          'stateCode', 'stateName', 'district', 'city', 'contactName',
+          'revealOnlyToApproved', 'phoneVerified', 'status', 'wasPreviouslyApproved',
+          'moderationReason', 'moderatedBy', 'moderatedAt', 'duplicateFingerprint',
+          'lastActivityAt', 'expiresAt', 'inactivityReminderSentAt', 'adoptedAt',
+          'createdAt', 'updatedAt'
+        ])
+        && data.listerUid is string && data.listerUid.size() <= 128
+        && data.listerType in ['individual', 'shelter']
+        && data.verifiedShelter is bool
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 60
+        && data.isUnnamed is bool
+        && data.species in ['dog', 'cat', 'other']
+        && data.breed is string && data.breed.size() >= 2 && data.breed.size() <= 80
+        && data.ageMonths is int && data.ageMonths >= 0 && data.ageMonths <= 360
+        && data.gender in ['male', 'female', 'unknown']
+        && data.size in ['small', 'medium', 'large']
+        && data.color is string && data.color.size() >= 2 && data.color.size() <= 60
+        && data.vaccinated is bool
+        && data.sterilised is bool
+        && data.injuriesOrConditions is string && data.injuriesOrConditions.size() <= 400
+        && data.temperament is list && data.temperament.size() >= 1 && data.temperament.size() <= 8
+        && data.goodWithKids in ['yes', 'no', 'unknown']
+        && data.goodWithOtherPets in ['yes', 'no', 'unknown']
+        && data.photos is list && data.photos.size() >= 1 && data.photos.size() <= 5 && data.photos[0] is string
+        && data.story is string && data.story.size() >= 30 && data.story.size() <= 1000
+        && data.stateCode in ['TN', 'KL']
+        && data.stateName is string && data.stateName.size() <= 50
+        && data.district is string && data.district.size() >= 2 && data.district.size() <= 80
+        && data.city is string && data.city.size() >= 2 && data.city.size() <= 80
+        && data.contactName is string && data.contactName.size() >= 2 && data.contactName.size() <= 80
+        && data.revealOnlyToApproved == true
+        && data.phoneVerified == true
+        && data.status in ['pending', 'approved', 'rejected', 'changes_requested', 'adopted', 'on_hold', 'expired_hidden']
+        && data.duplicateFingerprint is string && data.duplicateFingerprint.size() == 64;
+    }
+
+    function hasValidShelterVerification(data) {
+      return (data.listerType == 'individual' && data.verifiedShelter == false)
+        || (
+          data.listerType == 'shelter' && (
+            data.verifiedShelter == false
+            || (
+              exists(/databases/$(database)/documents/shelters/$(request.auth.uid))
+              && get(/databases/$(database)/documents/shelters/$(request.auth.uid)).data.status == 'APPROVED'
+              && get(/databases/$(database)/documents/shelters/$(request.auth.uid)).data.verified == true
+            )
+          )
+        );
+    }
+
+    match /adoptionListings/{listingId} {
+      allow get: if existing().status in ['approved', 'adopted']
+                 || (request.auth != null && existing().listerUid == request.auth.uid)
+                 || isAdmin();
+
+      allow list: if existing().status in ['approved', 'adopted']
+                  || (request.auth != null && existing().listerUid == request.auth.uid)
+                  || isAdmin();
+
+      allow create: if isValidId(listingId)
+                    && signedInVerified()
+                    && incoming().id == listingId
+                    && incoming().listerUid == request.auth.uid
+                    && incoming().status == 'pending'
+                    && isValidAdoptionListing(incoming())
+                    && hasValidShelterVerification(incoming());
+
+      allow update: if isValidId(listingId) && isValidAdoptionListing(incoming()) && (
+        // Case 1: Owner full edit (approved listings MUST reset to pending)
+        (signedInVerified()
+         && existing().listerUid == request.auth.uid
+         && incoming().listerUid == existing().listerUid
+         && incoming().id == existing().id
+         && incoming().createdAt == existing().createdAt
+         && (existing().status != 'approved' || incoming().status == 'pending')
+         && incoming().status in ['pending', existing().status]
+         && hasValidShelterVerification(incoming()))
+        ||
+        // Case 2: Owner status updates, renewal, or system inactivity transitions
+        (signedInVerified()
+         && existing().listerUid == request.auth.uid
+         && incoming().listerUid == existing().listerUid
+         && (
+           (existing().status == 'approved' && incoming().status in ['on_hold', 'adopted', 'expired_hidden', 'approved'])
+           || (existing().status == 'on_hold' && incoming().status in ['approved', 'adopted', 'expired_hidden', 'on_hold'])
+           || (existing().status == 'expired_hidden' && incoming().status in ['pending', 'expired_hidden'])
+         )
+         && incoming().diff(existing()).affectedKeys().hasOnly([
+           'status', 'lastActivityAt', 'expiresAt', 'inactivityReminderSentAt',
+           'adoptedAt', 'moderationReason', 'updatedAt'
+         ]))
+        ||
+        // Case 3: Admin moderation & safety report removal (anti-self-approval)
+        (isAdmin()
+         && request.auth.uid != existing().listerUid
+         && incoming().listerUid == existing().listerUid
+         && incoming().status in ['approved', 'rejected', 'changes_requested']
+         && incoming().diff(existing()).affectedKeys().hasOnly([
+           'status', 'moderationReason', 'moderatedBy', 'moderatedAt',
+           'wasPreviouslyApproved', 'lastActivityAt', 'updatedAt'
+         ]))
+      );
+
+      allow delete: if isValidId(listingId) && signedInVerified()
+                    && (existing().listerUid == request.auth.uid || isAdmin());
+
+      match /private/contact {
+        // Strictly private phone subdoc: only lister, admin, or accepted adopter may read
+        allow get: if (request.auth != null && existing().listerUid == request.auth.uid)
+                   || isAdmin()
+                   || (
+                     signedInVerified()
+                     && exists(/databases/$(database)/documents/adoptionRequests/$(request.auth.uid + '_' + listingId))
+                     && get(/databases/$(database)/documents/adoptionRequests/$(request.auth.uid + '_' + listingId)).data.status == 'approved'
+                   );
+        allow list: if false;
+        allow create: if signedInVerified()
+                      && incoming().listingId == listingId
+                      && incoming().listerUid == request.auth.uid
+                      && incoming().phone is string
+                      && incoming().phone.matches('^\\+91[6-9][0-9]{9}$');
+        allow update: if signedInVerified()
+                      && (existing().listerUid == request.auth.uid || isAdmin())
+                      && incoming().listingId == existing().listingId
+                      && incoming().listerUid == existing().listerUid
+                      && incoming().phone is string
+                      && incoming().phone.matches('^\\+91[6-9][0-9]{9}$');
+        allow delete: if signedInVerified()
+                      && (existing().listerUid == request.auth.uid || isAdmin());
+      }
+    }
+
+    match /listingDuplicates/{hash} {
+      allow get: if signedInVerified() && isValidId(hash);
+      allow list: if false;
+      allow create: if signedInVerified()
+                    && isValidId(hash)
+                    && incoming().listerUid == request.auth.uid
+                    && !exists(/databases/$(database)/documents/listingDuplicates/$(hash));
+      allow update: if false;
+      allow delete: if signedInVerified()
+                    && (existing().listerUid == request.auth.uid || isAdmin());
+    }
+
+    match /listingRateLimits/{uid} {
+      allow get: if isOwner(uid);
+      allow list: if false;
+      allow create, update: if isOwner(uid)
+                            && incoming().count is int
+                            && incoming().count >= 1
+                            && incoming().count <= 3
+                            && incoming().dateKey is string
+                            && incoming().dateKey.size() == 10;
+      allow delete: if false;
+    }
+
+    match /listingReports/{reportId} {
+      allow get: if isValidId(reportId) && (isAdmin() || (signedInVerified() && existing().reporterUid == request.auth.uid));
+      allow list: if isAdmin() || (signedInVerified() && existing().reporterUid == request.auth.uid);
+      allow create: if isValidId(reportId)
+                    && signedInVerified()
+                    && incoming().reporterUid == request.auth.uid
+                    && incoming().listerUid != request.auth.uid
+                    && reportId == request.auth.uid + '_' + incoming().listingId
+                    && incoming().status == 'open'
+                    && incoming().reason in ['suspected_sale', 'fraud_or_upfront_fee', 'animal_cruelty', 'misleading_info', 'other']
+                    && incoming().details is string
+                    && incoming().details.size() >= 10
+                    && incoming().details.size() <= 500;
+      allow update: if isValidId(reportId)
+                    && isAdmin()
+                    && incoming().status in ['resolved_dismissed', 'resolved_removed']
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'resolutionNote', 'resolvedBy', 'resolvedAt']);
+      allow delete: if false;
+    }
+
+    match /pets/{petId} {
+      // Publicly readable for all adopters and site visitors
+      allow read: if true;
+      // Writable ONLY by owning shelter or admin
+      allow create: if signedInVerified()
+                    && (request.resource.data.shelterId == request.auth.uid || isAdmin());
+      allow update: if signedInVerified()
+                    && (resource.data.shelterId == request.auth.uid || isAdmin());
+      allow delete: if signedInVerified()
+                    && (resource.data.shelterId == request.auth.uid || isAdmin());
+    }
+
+    match /adoptionRequests/{requestId} {
+      // Readable only by the adopter and target lister/shelter or admin
+      allow read: if signedInVerified()
+                  && (resource.data.adopterId == request.auth.uid
+                      || resource.data.adopterUid == request.auth.uid
+                      || resource.data.shelterId == request.auth.uid
+                      || resource.data.listerUid == request.auth.uid
+                      || isAdmin());
+      // Adopters create their own adoption requests with deterministic ID
+      allow create: if signedInVerified()
+                    && (request.resource.data.adopterId == request.auth.uid || request.resource.data.adopterUid == request.auth.uid)
+                    && request.resource.data.shelterId != request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && (requestId == request.auth.uid + '_' + request.resource.data.petId);
+      // Status updates: Adopter can cancel (or re-submit if cancelled); Lister/Shelter or admin can approve/reject
+      allow update: if signedInVerified() && (
+        // Case 1: Adopter cancels their pending request
+        ((resource.data.adopterId == request.auth.uid || resource.data.adopterUid == request.auth.uid)
+         && resource.data.status == 'pending'
+         && request.resource.data.status == 'cancelled'
+         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusUpdatedAt']))
+        ||
+        // Case 2: Adopter re-submits a previously cancelled request
+        ((resource.data.adopterId == request.auth.uid || resource.data.adopterUid == request.auth.uid)
+         && resource.data.status == 'cancelled'
+         && request.resource.data.status == 'pending'
+         && request.resource.data.shelterId != request.auth.uid)
+        ||
+        // Case 3: Lister/Shelter owner or Admin updates status
+        ((resource.data.shelterId == request.auth.uid || resource.data.listerUid == request.auth.uid || isAdmin())
+         && resource.data.status == 'pending'
+         && request.resource.data.status in ['approved', 'rejected']
+         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusReason', 'statusUpdatedAt']))
+      );
+      allow delete: if isAdmin() || (signedInVerified() && (resource.data.adopterId == request.auth.uid || resource.data.adopterUid == request.auth.uid) && resource.data.status != 'approved');
     }
 
     // =========================================================================

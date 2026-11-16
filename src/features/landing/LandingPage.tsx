@@ -51,7 +51,7 @@ export const LandingPage: React.FC = () => {
                 </div>
 
                 <h1 className="font-heading text-4xl font-normal leading-[1.15] tracking-tight text-[#231A1D] sm:text-5xl lg:text-6xl">
-                  Be the umbrella a shelter animal needs.
+                  Connecting every paw to its perfect hands.
                 </h1>
 
                 <p className="mt-5 text-base leading-relaxed text-[#6B5B61] sm:text-lg">

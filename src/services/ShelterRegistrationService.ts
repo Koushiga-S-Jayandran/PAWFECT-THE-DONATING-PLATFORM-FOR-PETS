@@ -65,11 +65,13 @@ export class ShelterRegistrationService {
 
     const valid = parsed.data;
     const nowIso = new Date().toISOString();
+    const state = valid.stateCode === 'KL' ? 'KERALA' : 'TAMIL_NADU';
 
     // 3. Assemble public document
     const shelter: Shelter = {
       ownerId,
       name: valid.name,
+      state,
       stateCode: valid.stateCode,
       district: valid.district,
       area: valid.area,
@@ -150,9 +152,11 @@ export class ShelterRegistrationService {
 
     const valid = parsed.data;
     const nowIso = new Date().toISOString();
+    const state = valid.stateCode === 'KL' ? 'KERALA' : 'TAMIL_NADU';
 
     const shelterUpdates: Partial<Shelter> = {
       name: valid.name,
+      state,
       stateCode: valid.stateCode,
       district: valid.district,
       area: valid.area,

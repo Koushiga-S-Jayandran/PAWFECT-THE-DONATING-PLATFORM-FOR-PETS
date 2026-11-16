@@ -27,11 +27,26 @@ export const ROUTES = {
   AUTH: '/auth',
   RESET: '/reset',
   DASHBOARD: '/dashboard',
+  PETS: '/pets',
+  LIST_ANIMAL: '/pets/list',
+  PET_DETAIL: '/pets/:id',
+  MY_LISTINGS: '/my-listings',
+  ADMIN_ADOPTIONS: '/admin/adoptions',
+  MY_ADOPTIONS: '/my-adoptions',
+  SAVED_PETS: '/saved-pets',
+  PROFILE: '/profile',
 } as const;
 
 export const ALLOWED_REDIRECT_PATHS: readonly string[] = [
   ROUTES.DASHBOARD,
   ROUTES.HOME,
+  ROUTES.PETS,
+  ROUTES.LIST_ANIMAL,
+  ROUTES.MY_LISTINGS,
+  ROUTES.ADMIN_ADOPTIONS,
+  ROUTES.MY_ADOPTIONS,
+  ROUTES.SAVED_PETS,
+  ROUTES.PROFILE,
 ];
 
 export function formatPaiseToRupees(paise: number): string {
